@@ -1,6 +1,6 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
-import 'screen_time_api_ios_method_channel.dart';
+import 'package:screen_time_api_ios/screen_time_api_ios_method_channel.dart';
 
 abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
   /// Constructs a ScreenTimeApiIosPlatform.

@@ -14,14 +14,14 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
         switch call.method {
         case "selectAppsToDiscourage":
             Task {
-                // スクリーンタイムAPIの認証
+                // Screen Time API Authentication
                 try await FamilyControlModel.shared.authorize()
                 showController()
             }
             result(nil)
         case "encourageAll":
-            // 全部解放する
-            FamilyControlModel.shared.encourageAll();
+            // Encourage all apps
+            FamilyControlModel.shared.encourageAll()
             FamilyControlModel.shared.saveSelection(selection: FamilyActivitySelection())
             result(nil)
         default:
@@ -42,7 +42,7 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
                 return w.isHidden == false
             }).first?.rootViewController as? FlutterViewController
             
-            // アプリ選択のUIを出す
+            // Display the app selection UI
             let selectAppVC: UIViewController = UIHostingController(rootView: ContentView())
             selectAppVC.navigationItem.rightBarButtonItem = UIBarButtonItem(
                 barButtonSystemItem: .close,

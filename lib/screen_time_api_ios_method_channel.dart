@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'screen_time_api_ios_platform_interface.dart';
+import 'package:screen_time_api_ios/screen_time_api_ios_platform_interface.dart';
 
 /// An implementation of [ScreenTimeApiIosPlatform] that uses method channels.
 class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
@@ -11,15 +11,17 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
 
   @override
   Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>('getPlatformVersion');
+    final version = await methodChannel.invokeMethod<String>(
+      'getPlatformVersion',
+    );
     return version;
   }
 
-  Future selectAppsToDiscourage() async {
+  Future<void> selectAppsToDiscourage() async {
     await methodChannel.invokeMethod('selectAppsToDiscourage');
   }
 
-  Future encourageAll() async {
+  Future<void> encourageAll() async {
     await methodChannel.invokeMethod('encourageAll');
   }
 }
