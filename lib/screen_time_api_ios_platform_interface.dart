@@ -52,4 +52,16 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
   Future<void> encourageAll() {
     throw UnimplementedError('encourageAll() has not been implemented.');
   }
+
+  Future<void> setAdultWebsiteBlocking({required bool enabled}) {
+    throw UnimplementedError(
+      'setAdultWebsiteBlocking() has not been implemented.',
+    );
+  }
+
+  Future<bool> getAdultWebsiteBlocking() {
+    throw UnimplementedError(
+      'getAdultWebsiteBlocking() has not been implemented.',
+    );
+  }
 }

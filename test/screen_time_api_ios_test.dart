@@ -25,6 +25,13 @@ class MockScreenTimeApiIosPlatform
       Future.value(FamilyActivitySelection.empty());
 
   @override
+  Future<void> setAdultWebsiteBlocking({required bool enabled}) =>
+      Future.value();
+
+  @override
+  Future<bool> getAdultWebsiteBlocking() => Future.value(false);
+
+  @override
   Future<void> encourageAll() => Future.value();
 }
 

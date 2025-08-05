@@ -38,12 +38,14 @@ class _HomePageState extends State<HomePage> {
   FamilyActivitySelection _selectedApps = FamilyActivitySelection.empty();
   String _authorizationStatus = 'unknown';
   bool _isLoading = false;
+  bool _adultWebsiteBlocking = false;
 
   @override
   void initState() {
     super.initState();
     _checkAuthorizationStatus().then((_) {
       _loadDiscouragedApps();
+      _loadAdultWebsiteBlocking();
     });
   }
 
@@ -101,6 +103,49 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _loadAdultWebsiteBlocking() async {
+    try {
+      final isBlocked = await _screenTimeApiIosPlugin.getAdultWebsiteBlocking();
+      setState(() {
+        _adultWebsiteBlocking = isBlocked;
+      });
+    } catch (e, s) {
+      debugPrintStack(
+        label: 'Error loading adult website blocking status: $e',
+        stackTrace: s,
+      );
+    }
+  }
+
+  Future<void> _toggleAdultWebsiteBlocking(bool enabled) async {
+    if (_authorizationStatus != 'authorized') {
+      _showSnackBar('Please authorize first', Colors.orange);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _screenTimeApiIosPlugin.setAdultWebsiteBlocking(
+        enabled: enabled,
+      );
+      setState(() {
+        _adultWebsiteBlocking = enabled;
+      });
+      _showSnackBar(
+        enabled ? 'Adult websites blocked' : 'Adult websites unblocked',
+        Colors.green,
+      );
+    } catch (e, s) {
+      debugPrintStack(
+        label: 'Error toggling adult website blocking: $e',
+        stackTrace: s,
+      );
+      _showSnackBar('Failed to update adult website blocking: $e', Colors.red);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _selectAppsToDiscourage() async {
     if (_authorizationStatus != 'authorized') {
       _showSnackBar('Please authorize first', Colors.orange);
@@ -129,8 +174,13 @@ class _HomePageState extends State<HomePage> {
       await _screenTimeApiIosPlugin.encourageAll();
       setState(() {
         _selectedApps = FamilyActivitySelection.empty();
+        _adultWebsiteBlocking =
+            false; // Adult website blocking is also disabled
       });
-      _showSnackBar('All apps encouraged!', Colors.green);
+      _showSnackBar(
+        'All apps encouraged and restrictions removed!',
+        Colors.green,
+      );
     } catch (e, s) {
       debugPrintStack(
         label: 'Error encouraging all apps: $e',
@@ -297,6 +347,40 @@ class _HomePageState extends State<HomePage> {
                             onPressed: _loadDiscouragedApps,
                             child: const Text('Refresh Discouraged Apps'),
                           ),
+                          const SizedBox(height: 16),
+                          const Divider(),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Expanded(
+                                child: Text(
+                                  'Block Adult Websites',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              Switch(
+                                value: _adultWebsiteBlocking,
+                                onChanged: _authorizationStatus == 'authorized'
+                                    ? _toggleAdultWebsiteBlocking
+                                    : null,
+                              ),
+                            ],
+                          ),
+                          if (_authorizationStatus != 'authorized')
+                            const Padding(
+                              padding: EdgeInsets.only(top: 4),
+                              child: Text(
+                                'Authorization required to change this setting',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey,
+                                  fontStyle: FontStyle.italic,
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     ),

@@ -55,4 +55,19 @@ class ScreenTimeApiIos {
   Future<void> encourageAll() async {
     return ScreenTimeApiIosPlatform.instance.encourageAll();
   }
+
+  /// Enable or disable adult website blocking
+  /// Requires prior authorization - call requestAuthorization() first
+  /// [enabled] - true to block adult websites, false to allow them
+  Future<void> setAdultWebsiteBlocking({required bool enabled}) async {
+    return ScreenTimeApiIosPlatform.instance.setAdultWebsiteBlocking(
+      enabled: enabled,
+    );
+  }
+
+  /// Get the current adult website blocking status
+  /// Returns true if adult websites are currently blocked, false otherwise
+  Future<bool> getAdultWebsiteBlocking() async {
+    return ScreenTimeApiIosPlatform.instance.getAdultWebsiteBlocking();
+  }
 }

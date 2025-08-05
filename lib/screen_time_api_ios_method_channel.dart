@@ -75,4 +75,19 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
   Future<void> encourageAll() async {
     await methodChannel.invokeMethod('encourageAll');
   }
+
+  @override
+  Future<void> setAdultWebsiteBlocking({required bool enabled}) async {
+    await methodChannel.invokeMethod('setAdultWebsiteBlocking', {
+      'enabled': enabled,
+    });
+  }
+
+  @override
+  Future<bool> getAdultWebsiteBlocking() async {
+    final result = await methodChannel.invokeMethod<bool>(
+      'getAdultWebsiteBlocking',
+    );
+    return result ?? false;
+  }
 }
