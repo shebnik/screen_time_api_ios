@@ -26,10 +26,18 @@ class AppLabelViewController: UIViewController {
     }
     
     private func setupAppLabelView() {
-        // Get the current selection and get the token by index and type
-        let selection = FamilyControlModel.shared.selectionToDiscourage
+        // Get the current selections - try quota first, then discourage
+        var selection = FamilyControlModel.shared.selectionForQuotaConfiguration
+        var selectionSource = "quota"
+        
+        // If quota selection is empty, try discourage selection
+        if selection.applicationTokens.isEmpty && selection.categoryTokens.isEmpty && selection.webDomainTokens.isEmpty {
+            selection = FamilyControlModel.shared.selectionToDiscourage
+            selectionSource = "discourage"
+        }
         
         print("AppLabelViewFactory: tokenType=\(tokenType), tokenIndex=\(tokenIndex)")
+        print("AppLabelViewFactory: using \(selectionSource) selection")
         print("AppLabelViewFactory: available app tokens=\(selection.applicationTokens.count)")
         print("AppLabelViewFactory: available category tokens=\(selection.categoryTokens.count)")
         print("AppLabelViewFactory: available webDomain tokens=\(selection.webDomainTokens.count)")
@@ -73,6 +81,8 @@ class AppLabelViewController: UIViewController {
                 Text("Type: \(tokenType)")
                     .font(.caption)
                 Text("Index: \(tokenIndex)")
+                    .font(.caption)
+                Text("Source: \(selectionSource)")
                     .font(.caption)
                 Text("Available: app=\(selection.applicationTokens.count), cat=\(selection.categoryTokens.count), web=\(selection.webDomainTokens.count)")
                     .font(.caption)

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:screen_time_api_ios/models/app_quota.dart';
 import 'package:screen_time_api_ios/models/family_activity_selection.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_platform_interface.dart';
 
@@ -89,5 +90,56 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
       'getAdultWebsiteBlocking',
     );
     return result ?? false;
+  }
+
+  @override
+  Future<void> setAppQuotas(AppQuotaCollection quotas) async {
+    await methodChannel.invokeMethod('setAppQuotas', quotas.toMap());
+  }
+
+  @override
+  Future<AppQuotaCollection> getAppQuotas() async {
+    try {
+      final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
+        'getAppQuotas',
+      );
+      if (result != null) {
+        return AppQuotaCollection.fromMap(
+          Map<String, dynamic>.from(result),
+        );
+      }
+      return AppQuotaCollection.empty();
+    } catch (e) {
+      debugPrint('Error in getAppQuotas: $e');
+      return AppQuotaCollection.empty();
+    }
+  }
+
+  @override
+  Future<void> applyQuotaSettings() async {
+    await methodChannel.invokeMethod('applyQuotaSettings');
+  }
+
+  @override
+  Future<void> simulateAppUsage(int index) async {
+    await methodChannel.invokeMethod('simulateAppUsage', {'index': index});
+  }
+
+  @override
+  Future<FamilyActivitySelection> selectAppsForQuotaConfiguration() async {
+    try {
+      final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
+        'selectAppsForQuotaConfiguration',
+      );
+      if (result != null) {
+        return FamilyActivitySelection.fromMap(
+          Map<String, dynamic>.from(result),
+        );
+      }
+      return FamilyActivitySelection.empty();
+    } catch (e) {
+      debugPrint('Error in selectAppsForQuotaConfiguration: $e');
+      return FamilyActivitySelection.empty();
+    }
   }
 }

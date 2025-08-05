@@ -1,12 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
-enum TokenType {
-  application,
-  category,
-  webDomain,
-}
+import 'package:screen_time_api_ios/models/token_type.dart';
 
 class AppLabelView extends StatelessWidget {
   const AppLabelView({
@@ -27,7 +22,7 @@ class AppLabelView extends StatelessWidget {
               viewType: 'app_label_view',
               creationParams: <String, dynamic>{
                 'tokenIndex': tokenIndex,
-                'tokenType': tokenType.name,
+                'tokenType': tokenType.value,
               },
               creationParamsCodec: const StandardMessageCodec(),
             )

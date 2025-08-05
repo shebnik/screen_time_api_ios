@@ -1,11 +1,14 @@
+import 'package:screen_time_api_ios/models/app_quota.dart';
 import 'package:screen_time_api_ios/models/authorization_response.dart';
 import 'package:screen_time_api_ios/models/family_activity_selection.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_platform_interface.dart';
 
+export 'models/app_quota.dart';
 export 'models/authorization_response.dart';
 // Export models for external use
 export 'models/authorization_status.dart';
 export 'models/family_activity_selection.dart';
+export 'models/token_type.dart';
 // Export widgets
 export 'widgets/app_label_view.dart';
 
@@ -69,5 +72,40 @@ class ScreenTimeApiIos {
   /// Returns true if adult websites are currently blocked, false otherwise
   Future<bool> getAdultWebsiteBlocking() async {
     return ScreenTimeApiIosPlatform.instance.getAdultWebsiteBlocking();
+  }
+
+  /// Set daily quotas for selected apps
+  /// [quotas] - Collection of app quotas with daily limits
+  /// This method saves the configuration but does not immediately apply
+  /// blocking
+  /// Call applyQuotaSettings() to enforce the quotas
+  Future<void> setAppQuotas(AppQuotaCollection quotas) async {
+    return ScreenTimeApiIosPlatform.instance.setAppQuotas(quotas);
+  }
+
+  /// Get current app quotas configuration
+  /// Returns the saved app quotas with current usage counts
+  Future<AppQuotaCollection> getAppQuotas() async {
+    return ScreenTimeApiIosPlatform.instance.getAppQuotas();
+  }
+
+  /// Apply quota-based blocking to configured apps
+  /// Only blocks apps that have exceeded their daily quotas
+  /// Should be called after setting quotas and when you want to enforce them
+  Future<void> applyQuotaSettings() async {
+    return ScreenTimeApiIosPlatform.instance.applyQuotaSettings();
+  }
+
+  /// Simulate app usage for testing purposes
+  /// [index] - The index of the app/category to simulate usage for
+  Future<void> simulateAppUsage(int index) async {
+    return ScreenTimeApiIosPlatform.instance.simulateAppUsage(index);
+  }
+
+  /// Select apps for quota configuration without immediately blocking them
+  /// This replaces the immediate blocking behavior of selectAppsToDiscourage()
+  /// Returns the selected apps that can then be configured with quotas
+  Future<FamilyActivitySelection> selectAppsForQuotaConfiguration() async {
+    return ScreenTimeApiIosPlatform.instance.selectAppsForQuotaConfiguration();
   }
 }
