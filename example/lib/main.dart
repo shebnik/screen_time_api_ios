@@ -318,18 +318,10 @@ class _HomePageState extends State<HomePage> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          // Native iOS app label views - show all selected
-                          // items
                           if (_selectedApps.applicationTokens.isNotEmpty) ...[
-                            const Text(
-                              'Selected Applications:',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
                             const SizedBox(height: 8),
-                            Column(
+                            ExpansionTile(
+                              title: const Text('Selected Applications'),
                               children: _selectedApps.applicationTokens
                                   .asMap()
                                   .entries
@@ -338,7 +330,7 @@ class _HomePageState extends State<HomePage> {
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: AppLabelView(
                                         tokenIndex: entry.key,
-                                        tokenType: 'application',
+                                        tokenType: TokenType.application,
                                       ),
                                     ),
                                   )
@@ -347,15 +339,8 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(height: 16),
                           ],
                           if (_selectedApps.categoryTokens.isNotEmpty) ...[
-                            const Text(
-                              'Selected Categories:',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Column(
+                            ExpansionTile(
+                              title: const Text('Selected Categories'),
                               children: _selectedApps.categoryTokens
                                   .asMap()
                                   .entries
@@ -364,7 +349,7 @@ class _HomePageState extends State<HomePage> {
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: AppLabelView(
                                         tokenIndex: entry.key,
-                                        tokenType: 'category',
+                                        tokenType: TokenType.category,
                                       ),
                                     ),
                                   )
@@ -373,15 +358,8 @@ class _HomePageState extends State<HomePage> {
                             const SizedBox(height: 16),
                           ],
                           if (_selectedApps.webDomainTokens.isNotEmpty) ...[
-                            const Text(
-                              'Selected Web Domains:',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Column(
+                            ExpansionTile(
+                              title: const Text('Selected Web Domains'),
                               children: _selectedApps.webDomainTokens
                                   .asMap()
                                   .entries
@@ -390,7 +368,7 @@ class _HomePageState extends State<HomePage> {
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: AppLabelView(
                                         tokenIndex: entry.key,
-                                        tokenType: 'webDomain',
+                                        tokenType: TokenType.webDomain,
                                       ),
                                     ),
                                   )

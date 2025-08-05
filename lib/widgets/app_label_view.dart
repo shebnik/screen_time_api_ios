@@ -2,6 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+enum TokenType {
+  application,
+  category,
+  webDomain,
+}
+
 class AppLabelView extends StatelessWidget {
   const AppLabelView({
     required this.tokenIndex,
@@ -10,7 +16,7 @@ class AppLabelView extends StatelessWidget {
   });
 
   final int tokenIndex;
-  final String tokenType; // 'application', 'category', or 'webDomain'
+  final TokenType tokenType;
 
   @override
   Widget build(BuildContext context) {
@@ -21,7 +27,7 @@ class AppLabelView extends StatelessWidget {
               viewType: 'app_label_view',
               creationParams: <String, dynamic>{
                 'tokenIndex': tokenIndex,
-                'tokenType': tokenType,
+                'tokenType': tokenType.name,
               },
               creationParamsCodec: const StandardMessageCodec(),
             )
@@ -47,27 +53,23 @@ class AppLabelView extends StatelessWidget {
 
   Color _getBackgroundColor() {
     switch (tokenType) {
-      case 'application':
+      case TokenType.application:
         return Colors.grey[200]!;
-      case 'category':
+      case TokenType.category:
         return Colors.blue[100]!;
-      case 'webDomain':
+      case TokenType.webDomain:
         return Colors.green[100]!;
-      default:
-        return Colors.grey[200]!;
     }
   }
 
   String _getDisplayName() {
     switch (tokenType) {
-      case 'application':
+      case TokenType.application:
         return 'App';
-      case 'category':
+      case TokenType.category:
         return 'Category';
-      case 'webDomain':
+      case TokenType.webDomain:
         return 'Web Domain';
-      default:
-        return 'Token';
     }
   }
 }
