@@ -1,5 +1,4 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-
 import 'package:screen_time_api_ios/screen_time_api_ios_method_channel.dart';
 
 abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
@@ -25,5 +24,31 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
 
   Future<String?> getPlatformVersion() {
     throw UnimplementedError('platformVersion() has not been implemented.');
+  }
+
+  Future<Map<String, dynamic>> requestAuthorization() {
+    throw UnimplementedError(
+      'requestAuthorization() has not been implemented.',
+    );
+  }
+
+  Future<Map<String, dynamic>> getAuthorizationStatus() {
+    throw UnimplementedError(
+      'getAuthorizationStatus() has not been implemented.',
+    );
+  }
+
+  Future<List<String>> selectAppsToDiscourage() {
+    throw UnimplementedError(
+      'selectAppsToDiscourage() has not been implemented.',
+    );
+  }
+
+  Future<List<String>> getDiscouragedApps() {
+    throw UnimplementedError('getDiscouragedApps() has not been implemented.');
+  }
+
+  Future<void> encourageAll() {
+    throw UnimplementedError('encourageAll() has not been implemented.');
   }
 }
