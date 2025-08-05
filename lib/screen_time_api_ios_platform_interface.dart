@@ -1,4 +1,5 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:screen_time_api_ios/models/family_activity_selection.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_method_channel.dart';
 
 abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
@@ -38,13 +39,13 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
     );
   }
 
-  Future<List<String>> selectAppsToDiscourage() {
+  Future<FamilyActivitySelection> selectAppsToDiscourage() {
     throw UnimplementedError(
       'selectAppsToDiscourage() has not been implemented.',
     );
   }
 
-  Future<List<String>> getDiscouragedApps() {
+  Future<FamilyActivitySelection> getDiscouragedApps() {
     throw UnimplementedError('getDiscouragedApps() has not been implemented.');
   }
 

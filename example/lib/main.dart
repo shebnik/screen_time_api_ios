@@ -35,7 +35,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final _screenTimeApiIosPlugin = ScreenTimeApiIos();
 
-  List<String> _selectedApps = [];
+  FamilyActivitySelection _selectedApps = FamilyActivitySelection.empty();
   String _authorizationStatus = 'unknown';
   bool _isLoading = false;
 
@@ -91,7 +91,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _loadDiscouragedApps() async {
     try {
       final apps = await _screenTimeApiIosPlugin.getDiscouragedApps();
-      _selectedApps = List<String>.from(apps);
+      _selectedApps = apps;
       setState(() {});
     } catch (e, s) {
       debugPrintStack(
@@ -128,7 +128,7 @@ class _HomePageState extends State<HomePage> {
     try {
       await _screenTimeApiIosPlugin.encourageAll();
       setState(() {
-        _selectedApps = [];
+        _selectedApps = FamilyActivitySelection.empty();
       });
       _showSnackBar('All apps encouraged!', Colors.green);
     } catch (e, s) {
@@ -164,6 +164,34 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  int _getTotalTokenCount() {
+    return _selectedApps.totalCount;
+  }
+
+  Widget _buildTokenSection(String title, List<dynamic> tokens) {
+    if (tokens.isEmpty) return const SizedBox.shrink();
+
+    return ExpansionTile(
+      title: Text('$title (${tokens.length})'),
+      children: tokens
+          .map(
+            (token) => ListTile(
+              dense: true,
+              title: Text(
+                token.toString(),
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontFamily: 'monospace',
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -173,13 +201,13 @@ class _HomePageState extends State<HomePage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsets.all(16),
               child: ListView(
                 children: [
                   // Authorization Status Card
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -234,7 +262,7 @@ class _HomePageState extends State<HomePage> {
                   // App Selection Section
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -278,36 +306,130 @@ class _HomePageState extends State<HomePage> {
                   // Selected Apps Display
                   Card(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: const EdgeInsets.all(16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Discouraged Apps (${_selectedApps.length})',
+                            'Discouraged Apps (${_getTotalTokenCount()})',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           const SizedBox(height: 12),
+                          // Native iOS app label views - show all selected
+                          // items
+                          if (_selectedApps.applicationTokens.isNotEmpty) ...[
+                            const Text(
+                              'Selected Applications:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Column(
+                              children: _selectedApps.applicationTokens
+                                  .asMap()
+                                  .entries
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: AppLabelView(
+                                        tokenIndex: entry.key,
+                                        tokenType: 'application',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          if (_selectedApps.categoryTokens.isNotEmpty) ...[
+                            const Text(
+                              'Selected Categories:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Column(
+                              children: _selectedApps.categoryTokens
+                                  .asMap()
+                                  .entries
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: AppLabelView(
+                                        tokenIndex: entry.key,
+                                        tokenType: 'category',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          if (_selectedApps.webDomainTokens.isNotEmpty) ...[
+                            const Text(
+                              'Selected Web Domains:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Column(
+                              children: _selectedApps.webDomainTokens
+                                  .asMap()
+                                  .entries
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: AppLabelView(
+                                        tokenIndex: entry.key,
+                                        tokenType: 'webDomain',
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          if (_selectedApps.applicationTokens.isEmpty &&
+                              _selectedApps.categoryTokens.isEmpty &&
+                              _selectedApps.webDomainTokens.isEmpty)
+                            const Text(
+                              'No apps, categories, or web domains '
+                              'selected yet',
+                              style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey,
+                              ),
+                            ),
                           const SizedBox(height: 8),
-                          if (_selectedApps.isNotEmpty)
+                          if (_getTotalTokenCount() > 0)
                             ExpansionTile(
                               title: const Text('Raw Tokens (Debug)'),
-                              children: _selectedApps.map((token) => 
-                                ListTile(
-                                  dense: true,
-                                  title: Text(
-                                    token,
-                                    style: const TextStyle(
-                                      fontSize: 10,
-                                      fontFamily: 'monospace',
-                                    ),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                              children: [
+                                if (_selectedApps.applicationTokens.isNotEmpty)
+                                  _buildTokenSection(
+                                    'Application Tokens',
+                                    _selectedApps.applicationTokens,
                                   ),
-                                )
-                              ).toList(),
+                                if (_selectedApps.categoryTokens.isNotEmpty)
+                                  _buildTokenSection(
+                                    'Category Tokens',
+                                    _selectedApps.categoryTokens,
+                                  ),
+                                if (_selectedApps.webDomainTokens.isNotEmpty)
+                                  _buildTokenSection(
+                                    'Web Domain Tokens',
+                                    _selectedApps.webDomainTokens,
+                                  ),
+                              ],
                             ),
                         ],
                       ),

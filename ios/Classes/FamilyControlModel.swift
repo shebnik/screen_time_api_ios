@@ -49,7 +49,11 @@ class FamilyControlModel: ObservableObject {
     }
 
     func authorize() async throws {
-        try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+        if #available(iOS 16.0, *) {
+            try await AuthorizationCenter.shared.requestAuthorization(for: .individual)
+        } else {
+            AuthorizationCenter.shared.requestAuthorization(completionHandler: { _ in })
+        }
     }
 
     func encourageAll(){

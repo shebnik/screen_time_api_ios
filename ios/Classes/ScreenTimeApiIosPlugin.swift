@@ -10,6 +10,10 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
         let channel = FlutterMethodChannel(name: "screen_time_api_ios", binaryMessenger: registrar.messenger())
         let instance = ScreenTimeApiIosPlugin()
         registrar.addMethodCallDelegate(instance, channel: channel)
+        
+        // Register the platform view factory for app labels
+        let factory = AppLabelViewFactory()
+        registrar.register(factory, withId: "app_label_view")
     }
     
     public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -56,6 +60,10 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
             FamilyControlModel.shared.encourageAll()
             FamilyControlModel.shared.selectionToDiscourage = FamilyActivitySelection()
             FamilyControlModel.shared.saveSelection(selection: FamilyActivitySelection())
+            
+            // Notify all platform views that the selection changed
+            NotificationCenter.default.post(name: NSNotification.Name("FamilySelectionChanged"), object: nil)
+            
             result(nil)
         default:
             result(FlutterMethodNotImplemented)
@@ -67,6 +75,9 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
         let selectedTokens = getSelectedTokens()
         dismiss()
         
+        // Notify all platform views that the selection changed
+        NotificationCenter.default.post(name: NSNotification.Name("FamilySelectionChanged"), object: nil)
+        
         // Return the selected tokens to Flutter
         if let result = pendingResult {
             result(selectedTokens)
@@ -74,26 +85,45 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
         }
     }
     
-    private func getSelectedTokens() -> [String] {
+    private func getSelectedTokens() -> [String: Any] {
         let selection = FamilyControlModel.shared.selectionToDiscourage
-        let applicationTokens = selection.applicationTokens
-        let categoryTokens = selection.categoryTokens
         
-        var tokens: [String] = []
+        var result: [String: Any] = [
+            "applicationTokens": [],
+            "categoryTokens": [],
+            "webDomainTokens": []
+        ]
         
         // Convert application tokens to strings
-        for token in applicationTokens {
+        var applicationTokens: [String] = []
+        for token in selection.applicationTokens {
             let data = withUnsafeBytes(of: token) { Data($0) }
-            tokens.append(data.base64EncodedString())
+            applicationTokens.append(data.base64EncodedString())
         }
+        result["applicationTokens"] = applicationTokens
         
         // Convert category tokens to strings
-        for token in categoryTokens {
+        var categoryTokens: [String] = []
+        for token in selection.categoryTokens {
             let data = withUnsafeBytes(of: token) { Data($0) }
-            tokens.append(data.base64EncodedString())
+            categoryTokens.append(data.base64EncodedString())
+        }
+        result["categoryTokens"] = categoryTokens
+        
+        // Convert web domain tokens to strings
+        var webDomainTokens: [String] = []
+        for token in selection.webDomainTokens {
+            let data = withUnsafeBytes(of: token) { Data($0) }
+            webDomainTokens.append(data.base64EncodedString())
+        }
+        result["webDomainTokens"] = webDomainTokens
+        
+        // Add includeEntireCategory if available (iOS 15.2+)
+        if #available(iOS 15.2, *) {
+            result["includeEntireCategory"] = selection.includeEntireCategory
         }
         
-        return tokens
+        return result
     }
     
     private func getAuthorizationStatus() -> String {

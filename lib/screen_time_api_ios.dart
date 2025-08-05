@@ -1,9 +1,13 @@
 import 'package:screen_time_api_ios/models/authorization_response.dart';
+import 'package:screen_time_api_ios/models/family_activity_selection.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_platform_interface.dart';
 
 export 'models/authorization_response.dart';
 // Export models for external use
 export 'models/authorization_status.dart';
+export 'models/family_activity_selection.dart';
+// Export widgets
+export 'widgets/app_label_view.dart';
 
 class ScreenTimeApiIos {
   Future<String?> getPlatformVersion() {
@@ -35,15 +39,15 @@ class ScreenTimeApiIos {
 
   /// Present the app selection UI to discourage specific apps
   /// Requires prior authorization - call requestAuthorization() first
-  /// Returns a list of selected app/category tokens
+  /// Returns a FamilyActivitySelection with separated token types
   /// Throws an exception if not authorized
-  Future<List<String>> selectAppsToDiscourage() async {
+  Future<FamilyActivitySelection> selectAppsToDiscourage() async {
     return ScreenTimeApiIosPlatform.instance.selectAppsToDiscourage();
   }
 
   /// Get the list of currently discouraged apps/categories
-  /// Returns a list of app/category tokens
-  Future<List<String>> getDiscouragedApps() async {
+  /// Returns a FamilyActivitySelection with separated token types
+  Future<FamilyActivitySelection> getDiscouragedApps() async {
     return ScreenTimeApiIosPlatform.instance.getDiscouragedApps();
   }
 

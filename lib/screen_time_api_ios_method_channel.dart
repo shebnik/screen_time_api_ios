@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:screen_time_api_ios/models/family_activity_selection.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_platform_interface.dart';
 
 /// An implementation of [ScreenTimeApiIosPlatform] that uses method channels.
@@ -35,21 +36,39 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
   }
 
   @override
-  Future<List<String>> selectAppsToDiscourage() async {
-    final result = await methodChannel.invokeMethod('selectAppsToDiscourage');
-    if (result is List) {
-      return result.cast<String>();
+  Future<FamilyActivitySelection> selectAppsToDiscourage() async {
+    try {
+      final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
+        'selectAppsToDiscourage',
+      );
+      if (result != null) {
+        return FamilyActivitySelection.fromMap(
+          Map<String, dynamic>.from(result),
+        );
+      }
+      return FamilyActivitySelection.empty();
+    } catch (e) {
+      debugPrint('Error in selectAppsToDiscourage: $e');
+      return FamilyActivitySelection.empty();
     }
-    return [];
   }
 
   @override
-  Future<List<String>> getDiscouragedApps() async {
-    final result = await methodChannel.invokeMethod('getDiscouragedApps');
-    if (result is List) {
-      return result.cast<String>();
+  Future<FamilyActivitySelection> getDiscouragedApps() async {
+    try {
+      final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
+        'getDiscouragedApps',
+      );
+      if (result != null) {
+        return FamilyActivitySelection.fromMap(
+          Map<String, dynamic>.from(result),
+        );
+      }
+      return FamilyActivitySelection.empty();
+    } catch (e) {
+      debugPrint('Error in getDiscouragedApps: $e');
+      return FamilyActivitySelection.empty();
     }
-    return [];
   }
 
   @override

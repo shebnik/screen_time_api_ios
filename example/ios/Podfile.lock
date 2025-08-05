@@ -21,7 +21,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   Flutter: e0871f40cf51350855a761d2e70bf5af5b9b5de7
   integration_test: 252f60fa39af5e17c3aa9899d35d908a0721b573
-  screen_time_api_ios: bfa77edf8dc18ff25471e01744eadc9746c7d947
+  screen_time_api_ios: 0b0eb155b5184d9967cb1ea54f9f3acc677e06ad
 
 PODFILE CHECKSUM: 819463e6a0290f5a72f145ba7cde16e8b6ef0796
 
