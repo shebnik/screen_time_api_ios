@@ -15,13 +15,10 @@ class FamilyControlModel: ObservableObject {
 
     private init() {
         selectionToDiscourage = savedSelection() ?? FamilyActivitySelection()
-        // For quota-based selection, we don't immediately apply restrictions
-        selectionForQuotaConfiguration = FamilyActivitySelection()
     }
 
     private let store = ManagedSettingsStore()
     private let userDefaultsKey = "ScreenTimeSelection"
-    private let quotaSelectionKey = "QuotaSelection"
     private let encoder = PropertyListEncoder()
     private let decoder = PropertyListDecoder()
 
@@ -48,13 +45,6 @@ class FamilyControlModel: ObservableObject {
                     categories
                 )
             self.saveSelection(selection: newValue)
-        }
-    }
-    
-    // New property for quota-based app selection (does not immediately apply restrictions)
-    var selectionForQuotaConfiguration = FamilyActivitySelection() {
-        didSet {
-            saveQuotaSelection(selection: selectionForQuotaConfiguration)
         }
     }
 
@@ -87,32 +77,11 @@ class FamilyControlModel: ObservableObject {
             forKey: userDefaultsKey
         )
     }
-    
-    func saveQuotaSelection(selection: FamilyActivitySelection) {
-        let defaults = UserDefaults.standard
-        defaults.set(
-            try? encoder.encode(selection),
-            forKey: quotaSelectionKey
-        )
-    }
 
     func savedSelection() -> FamilyActivitySelection? {
         let defaults = UserDefaults.standard
 
         guard let data = defaults.data(forKey: userDefaultsKey) else {
-            return nil
-        }
-
-        return try? decoder.decode(
-            FamilyActivitySelection.self,
-            from: data
-        )
-    }
-    
-    func savedQuotaSelection() -> FamilyActivitySelection? {
-        let defaults = UserDefaults.standard
-
-        guard let data = defaults.data(forKey: quotaSelectionKey) else {
             return nil
         }
 

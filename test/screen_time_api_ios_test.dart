@@ -33,23 +33,6 @@ class MockScreenTimeApiIosPlatform
 
   @override
   Future<void> encourageAll() => Future.value();
-
-  @override
-  Future<void> setAppQuotas(AppQuotaCollection quotas) => Future.value();
-
-  @override
-  Future<AppQuotaCollection> getAppQuotas() =>
-      Future.value(AppQuotaCollection.empty());
-
-  @override
-  Future<void> applyQuotaSettings() => Future.value();
-
-  @override
-  Future<void> simulateAppUsage(int index) => Future.value();
-
-  @override
-  Future<FamilyActivitySelection> selectAppsForQuotaConfiguration() =>
-      Future.value(FamilyActivitySelection.empty());
 }
 
 void main() {

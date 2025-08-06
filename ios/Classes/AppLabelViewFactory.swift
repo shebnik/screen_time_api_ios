@@ -1,3 +1,10 @@
+//
+//  AppLabelViewFactory.swift
+//  screen_time_api_ios
+//
+//  Created by Nikita on 8/5/25.
+//
+
 import UIKit
 import SwiftUI
 import FamilyControls
@@ -7,12 +14,12 @@ import ManagedSettings
 
 class AppLabelViewController: UIViewController {
     private var hostingController: UIHostingController<AnyView>?
-    private let tokenIndex: Int
     private let tokenType: String
+    private let encodedToken: String
     
-    init(tokenIndex: Int, tokenType: String) {
-        self.tokenIndex = tokenIndex
+    init(tokenType: String, encodedToken: String) {
         self.tokenType = tokenType
+        self.encodedToken = encodedToken
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -26,49 +33,37 @@ class AppLabelViewController: UIViewController {
     }
     
     private func setupAppLabelView() {
-        // Get the current selections - try quota first, then discourage
-        var selection = FamilyControlModel.shared.selectionForQuotaConfiguration
-        var selectionSource = "quota"
-        
-        // If quota selection is empty, try discourage selection
-        if selection.applicationTokens.isEmpty && selection.categoryTokens.isEmpty && selection.webDomainTokens.isEmpty {
-            selection = FamilyControlModel.shared.selectionToDiscourage
-            selectionSource = "discourage"
-        }
-        
-        print("AppLabelViewFactory: tokenType=\(tokenType), tokenIndex=\(tokenIndex)")
-        print("AppLabelViewFactory: using \(selectionSource) selection")
-        print("AppLabelViewFactory: available app tokens=\(selection.applicationTokens.count)")
-        print("AppLabelViewFactory: available category tokens=\(selection.categoryTokens.count)")
-        print("AppLabelViewFactory: available webDomain tokens=\(selection.webDomainTokens.count)")
+        print("AppLabelViewFactory: tokenType=\(tokenType), encodedToken=\(encodedToken)")
         
         var tokenTypeResult: TokenType?
+        let tokenManager = TokenManager()
         
         switch tokenType {
         case "application":
-            let tokens = Array(selection.applicationTokens)
-            print("AppLabelViewFactory: Looking for application token at index \(tokenIndex) of \(tokens.count)")
-            if tokenIndex < tokens.count {
-                tokenTypeResult = .application(tokens[tokenIndex])
-                print("AppLabelViewFactory: Found application token!")
+            if let token = try? tokenManager.decodeApplicationToken(encodedToken) {
+                tokenTypeResult = .application(token)
+            } else {
+                print("⚠️ Failed to decode ApplicationToken from string: \(encodedToken)")
             }
+            
         case "category":
-            let tokens = Array(selection.categoryTokens)
-            print("AppLabelViewFactory: Looking for category token at index \(tokenIndex) of \(tokens.count)")
-            if tokenIndex < tokens.count {
-                tokenTypeResult = .category(tokens[tokenIndex])
-                print("AppLabelViewFactory: Found category token!")
+            if let token = try? tokenManager.decodeCategoryToken(encodedToken) {
+                tokenTypeResult = .category(token)
+            } else {
+                print("⚠️ Failed to decode ActivityCategoryToken from string: \(encodedToken)")
             }
+            
         case "webDomain":
-            let tokens = Array(selection.webDomainTokens)
-            print("AppLabelViewFactory: Looking for webDomain token at index \(tokenIndex) of \(tokens.count)")
-            if tokenIndex < tokens.count {
-                tokenTypeResult = .webDomain(tokens[tokenIndex])
-                print("AppLabelViewFactory: Found webDomain token!")
+            if let token = try? tokenManager.decodeWebDomainToken(encodedToken) {
+                tokenTypeResult = .webDomain(token)
+            } else {
+                print("⚠️ Failed to decode WebDomainToken from string: \(encodedToken)")
             }
+            
         default:
             print("AppLabelViewFactory: Unknown token type: \(tokenType)")
         }
+        
         
         if let tokenTypeResult = tokenTypeResult {
             let appLabelView = AppLabelView(tokenType: tokenTypeResult)
@@ -80,13 +75,8 @@ class AppLabelViewController: UIViewController {
                     .foregroundColor(.red)
                 Text("Type: \(tokenType)")
                     .font(.caption)
-                Text("Index: \(tokenIndex)")
+                Text("Token: \(encodedToken)")
                     .font(.caption)
-                Text("Source: \(selectionSource)")
-                    .font(.caption)
-                Text("Available: app=\(selection.applicationTokens.count), cat=\(selection.categoryTokens.count), web=\(selection.webDomainTokens.count)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
             .padding()
             hostingController = UIHostingController(rootView: AnyView(errorView))
@@ -139,29 +129,29 @@ class AppLabelPlatformView: NSObject, FlutterPlatformView {
     private let _controller: AppLabelViewController
     
     init(frame: CGRect, viewId: Int64, args: Any?) {
-        // Extract token index and type from arguments
-        var tokenIndex = 0
+        // Extract token type and encoded token from arguments
         var tokenType = "application"
+        var encodedToken = ""
         
         print("AppLabelViewFactory init: args = \(String(describing: args))")
         
         if let arguments = args as? [String: Any] {
             print("AppLabelViewFactory init: arguments = \(arguments)")
-            if let index = arguments["tokenIndex"] as? Int {
-                tokenIndex = index
-                print("AppLabelViewFactory init: extracted tokenIndex = \(tokenIndex)")
-            }
             if let type = arguments["tokenType"] as? String {
                 tokenType = type
                 print("AppLabelViewFactory init: extracted tokenType = \(tokenType)")
+            }
+            if let token = arguments["encodedToken"] as? String {
+                encodedToken = token
+                print("AppLabelViewFactory init: extracted encodedToken = \(encodedToken)")
             }
         } else {
             print("AppLabelViewFactory init: arguments is not a dictionary")
         }
         
-        print("AppLabelViewFactory init: final values - tokenIndex=\(tokenIndex), tokenType=\(tokenType)")
+        print("AppLabelViewFactory init: final values - tokenType=\(tokenType), encodedToken=\(encodedToken)")
         
-        _controller = AppLabelViewController(tokenIndex: tokenIndex, tokenType: tokenType)
+        _controller = AppLabelViewController(tokenType: tokenType, encodedToken: encodedToken)
         _view = _controller.view
         super.init()
         

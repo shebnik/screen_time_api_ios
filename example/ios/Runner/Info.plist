@@ -45,5 +45,9 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSFamilyControlsUsageDescription</key>
+    <string>Access to screen time data is required to manage app restrictions and monitor usage.</string>
+    <key>com.apple.developer.family-controls</key>
+    <true/>
 </dict>
 </plist>

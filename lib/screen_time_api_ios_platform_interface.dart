@@ -1,5 +1,4 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
-import 'package:screen_time_api_ios/models/app_quota.dart';
 import 'package:screen_time_api_ios/models/family_activity_selection.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_method_channel.dart';
 
@@ -63,44 +62,6 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
   Future<bool> getAdultWebsiteBlocking() {
     throw UnimplementedError(
       'getAdultWebsiteBlocking() has not been implemented.',
-    );
-  }
-
-  /// Set daily quotas for apps and save configuration
-  /// Does not immediately apply blocking - call applyQuotaSettings() to enforce
-  Future<void> setAppQuotas(AppQuotaCollection quotas) {
-    throw UnimplementedError(
-      'setAppQuotas() has not been implemented.',
-    );
-  }
-
-  /// Get current app quotas configuration
-  Future<AppQuotaCollection> getAppQuotas() {
-    throw UnimplementedError(
-      'getAppQuotas() has not been implemented.',
-    );
-  }
-
-  /// Apply quota-based blocking to selected apps
-  /// Only blocks apps that have exceeded their daily quotas
-  Future<void> applyQuotaSettings() {
-    throw UnimplementedError(
-      'applyQuotaSettings() has not been implemented.',
-    );
-  }
-
-  /// Simulate app usage for testing purposes
-  Future<void> simulateAppUsage(int index) {
-    throw UnimplementedError(
-      'simulateAppUsage() has not been implemented.',
-    );
-  }
-
-  /// Select apps without immediately blocking them
-  /// Returns the selected apps for quota configuration
-  Future<FamilyActivitySelection> selectAppsForQuotaConfiguration() {
-    throw UnimplementedError(
-      'selectAppsForQuotaConfiguration() has not been implemented.',
     );
   }
 }

@@ -5,13 +5,13 @@ import 'package:screen_time_api_ios/models/token_type.dart';
 
 class AppLabelView extends StatelessWidget {
   const AppLabelView({
-    required this.tokenIndex,
     required this.tokenType,
+    required this.encodedToken,
     super.key,
   });
 
-  final int tokenIndex;
   final TokenType tokenType;
+  final String encodedToken;
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +21,8 @@ class AppLabelView extends StatelessWidget {
           ? UiKitView(
               viewType: 'app_label_view',
               creationParams: <String, dynamic>{
-                'tokenIndex': tokenIndex,
                 'tokenType': tokenType.value,
+                'encodedToken': encodedToken,
               },
               creationParamsCodec: const StandardMessageCodec(),
             )
@@ -37,7 +37,7 @@ class AppLabelView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '${_getDisplayName()} #$tokenIndex',
+                  '${_getDisplayName()} ${encodedToken.substring(0, 8)}...',
                   style: const TextStyle(fontSize: 14),
                   textAlign: TextAlign.center,
                 ),

@@ -1,3 +1,10 @@
+//
+//  AppLabelView.swift
+//  screen_time_api_ios
+//
+//  Created by Nikita on 8/5/25.
+//
+
 import SwiftUI
 import FamilyControls
 import ManagedSettings

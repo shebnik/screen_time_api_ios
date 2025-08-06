@@ -4,8 +4,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios.dart';
 
-import 'package:screen_time_api_ios_example/quota_example.dart';
-
 void main() {
   runZonedGuarded(
     () {
@@ -256,107 +254,6 @@ class _HomePageState extends State<HomePage> {
               padding: const EdgeInsets.all(16),
               child: ListView(
                 children: [
-                  // Daily Quota System Card
-                  Card(
-                    color: Colors.green.shade50,
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.schedule,
-                                color: Colors.green.shade700,
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Daily Quota System',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 4,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.green,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Text(
-                                  'NEW',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Configure daily limits for app usage. Apps start '
-                            'with 0 allowed opens by default, and users can '
-                            'set custom quotas for each app.',
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute<void>(
-                                    builder: (context) => const QuotaExample(),
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.schedule),
-                              label: const Text('Try Daily Quota System'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.all(12),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Traditional Method Section
-                  const Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Traditional Immediate Blocking',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          SizedBox(height: 8),
-                          Text(
-                            'The original method - apps are blocked '
-                            'immediately after selection.',
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
                   // Authorization Status Card
                   Card(
                     child: Padding(
@@ -516,8 +413,8 @@ class _HomePageState extends State<HomePage> {
                                     (entry) => Padding(
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: AppLabelView(
-                                        tokenIndex: entry.key,
                                         tokenType: TokenType.application,
+                                        encodedToken: entry.value,
                                       ),
                                     ),
                                   )
@@ -535,8 +432,8 @@ class _HomePageState extends State<HomePage> {
                                     (entry) => Padding(
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: AppLabelView(
-                                        tokenIndex: entry.key,
                                         tokenType: TokenType.category,
+                                        encodedToken: entry.value,
                                       ),
                                     ),
                                   )
@@ -554,8 +451,8 @@ class _HomePageState extends State<HomePage> {
                                     (entry) => Padding(
                                       padding: const EdgeInsets.only(bottom: 8),
                                       child: AppLabelView(
-                                        tokenIndex: entry.key,
                                         tokenType: TokenType.webDomain,
+                                        encodedToken: entry.value,
                                       ),
                                     ),
                                   )
