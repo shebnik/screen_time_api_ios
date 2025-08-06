@@ -17,8 +17,17 @@ class MockScreenTimeApiIosPlatform
   Future<Map<String, dynamic>> getAuthorizationStatus() => Future.value({});
 
   @override
-  Future<FamilyActivitySelection> selectAppsToDiscourage() =>
+  Future<FamilyActivitySelection> showFamilyActivityPicker([
+    Map<String, dynamic>? uiConfig,
+  ]) => Future.value(FamilyActivitySelection.empty());
+
+  @override
+  Future<FamilyActivitySelection> getSelectedApps() =>
       Future.value(FamilyActivitySelection.empty());
+
+  @override
+  Future<bool> discourageApps(FamilyActivitySelection selection) =>
+      Future.value(true);
 
   @override
   Future<FamilyActivitySelection> getDiscouragedApps() =>

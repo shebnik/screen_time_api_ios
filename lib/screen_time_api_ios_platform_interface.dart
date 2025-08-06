@@ -39,10 +39,20 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
     );
   }
 
-  Future<FamilyActivitySelection> selectAppsToDiscourage() {
+  Future<FamilyActivitySelection> showFamilyActivityPicker([
+    Map<String, dynamic>? uiConfig,
+  ]) {
     throw UnimplementedError(
-      'selectAppsToDiscourage() has not been implemented.',
+      'showFamilyActivityPicker() has not been implemented.',
     );
+  }
+
+  Future<FamilyActivitySelection> getSelectedApps() {
+    throw UnimplementedError('getSelectedApps() has not been implemented.');
+  }
+
+  Future<bool> discourageApps(FamilyActivitySelection selection) {
+    throw UnimplementedError('discourageApps() has not been implemented.');
   }
 
   Future<FamilyActivitySelection> getDiscouragedApps() {

@@ -1,5 +1,6 @@
 import 'package:screen_time_api_ios/models/authorization_response.dart';
 import 'package:screen_time_api_ios/models/family_activity_selection.dart';
+import 'package:screen_time_api_ios/models/ui_customization.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_platform_interface.dart';
 
 // Export models for external use
@@ -7,6 +8,7 @@ export 'models/authorization_response.dart';
 export 'models/authorization_status.dart';
 export 'models/family_activity_selection.dart';
 export 'models/token_type.dart';
+export 'models/ui_customization.dart';
 // Export widgets
 export 'widgets/app_label_view.dart';
 
@@ -38,12 +40,32 @@ class ScreenTimeApiIos {
     return response.status.isAuthorized;
   }
 
-  /// Present the app selection UI to discourage specific apps
+  /// Present the family activity picker with UI customization options
   /// Requires prior authorization - call requestAuthorization() first
   /// Returns a FamilyActivitySelection with separated token types
   /// Throws an exception if not authorized
-  Future<FamilyActivitySelection> selectAppsToDiscourage() async {
-    return ScreenTimeApiIosPlatform.instance.selectAppsToDiscourage();
+  ///
+  /// [uiCustomization] Optional UICustomization object for customizing the UI 
+  /// appearance
+  Future<FamilyActivitySelection> showFamilyActivityPicker([
+    UICustomization? uiCustomization,
+  ]) async {
+    return ScreenTimeApiIosPlatform.instance.showFamilyActivityPicker(
+      uiCustomization?.toMap(),
+    );
+  }
+
+  /// Get the currently saved/selected apps and categories
+  /// Returns the persistent selection that was last saved
+  Future<FamilyActivitySelection> getSelectedApps() async {
+    return ScreenTimeApiIosPlatform.instance.getSelectedApps();
+  }
+
+  /// Apply restrictions to specific apps using provided [selection]
+  /// [selection] contains applicationTokens, categoryTokens, or webDomainTokens
+  /// Returns true if successful, false otherwise
+  Future<bool> discourageApps(FamilyActivitySelection selection) async {
+    return ScreenTimeApiIosPlatform.instance.discourageApps(selection);
   }
 
   /// Get the list of currently discouraged apps/categories

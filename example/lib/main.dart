@@ -36,6 +36,7 @@ class _HomePageState extends State<HomePage> {
   final _screenTimeApiIosPlugin = ScreenTimeApiIos();
 
   FamilyActivitySelection _selectedApps = FamilyActivitySelection.empty();
+  FamilyActivitySelection _discouragedApps = FamilyActivitySelection.empty();
   String _authorizationStatus = 'unknown';
   bool _isLoading = false;
   bool _adultWebsiteBlocking = false;
@@ -44,6 +45,7 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     _checkAuthorizationStatus().then((_) {
+      _loadSelectedApps();
       _loadDiscouragedApps();
       _loadAdultWebsiteBlocking();
     });
@@ -90,11 +92,26 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _loadSelectedApps() async {
+    try {
+      final apps = await _screenTimeApiIosPlugin.getSelectedApps();
+      setState(() {
+        _selectedApps = apps;
+      });
+    } catch (e, s) {
+      debugPrintStack(
+        label: 'Error loading selected apps: $e',
+        stackTrace: s,
+      );
+    }
+  }
+
   Future<void> _loadDiscouragedApps() async {
     try {
       final apps = await _screenTimeApiIosPlugin.getDiscouragedApps();
-      _selectedApps = apps;
-      setState(() {});
+      setState(() {
+        _discouragedApps = apps;
+      });
     } catch (e, s) {
       debugPrintStack(
         label: 'Error loading discouraged apps: $e',
@@ -146,7 +163,7 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  Future<void> _selectAppsToDiscourage() async {
+  Future<void> _showFamilyActivityPicker() async {
     if (_authorizationStatus != 'authorized') {
       _showSnackBar('Please authorize first', Colors.orange);
       return;
@@ -154,7 +171,23 @@ class _HomePageState extends State<HomePage> {
 
     setState(() => _isLoading = true);
     try {
-      _selectedApps = await _screenTimeApiIosPlugin.selectAppsToDiscourage();
+      _selectedApps = await _screenTimeApiIosPlugin.showFamilyActivityPicker(
+        const UICustomization(
+          navigationTitle: 'Выбор приложений',
+          saveButtonText: 'Сохранить выбор',
+          appsCountText: 'Приложения',
+          websitesCountText: 'Веб-сайты',
+          categoriesCountText: 'Категории',
+          saveButtonFontSize: 18,
+          countTextFontSize: 16,
+          navigationTitleFontSize: 20,
+          countTextColor: Colors.white,
+          saveButtonColor: Color(0xFFF4FF5F),
+          saveButtonTextColor: Colors.black,
+          navigationTintColor: Colors.white,
+          darkTextColor: Colors.black,
+        ),
+      );
       setState(() {});
       _showSnackBar('Apps selected successfully!', Colors.green);
     } catch (e, s) {
@@ -168,12 +201,46 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _discourageSelectedApps() async {
+    if (_authorizationStatus != 'authorized') {
+      _showSnackBar('Please authorize first', Colors.orange);
+      return;
+    }
+
+    if (_selectedApps.totalCount == 0) {
+      _showSnackBar('No apps selected to discourage', Colors.orange);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final success = await _screenTimeApiIosPlugin.discourageApps(
+        _selectedApps,
+      );
+      if (success) {
+        await _loadDiscouragedApps(); // Refresh discouraged apps list
+        _showSnackBar('Apps discouraged successfully!', Colors.green);
+      } else {
+        _showSnackBar('Failed to discourage apps', Colors.red);
+      }
+    } catch (e, s) {
+      debugPrintStack(
+        label: 'Error discouraging apps: $e',
+        stackTrace: s,
+      );
+      _showSnackBar('Failed to discourage apps: $e', Colors.red);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
   Future<void> _encourageAll() async {
     setState(() => _isLoading = true);
     try {
       await _screenTimeApiIosPlugin.encourageAll();
       setState(() {
         _selectedApps = FamilyActivitySelection.empty();
+        _discouragedApps = FamilyActivitySelection.empty();
         _adultWebsiteBlocking =
             false; // Adult website blocking is also disabled
       });
@@ -215,6 +282,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   int _getTotalTokenCount() {
+    return _discouragedApps.totalCount;
+  }
+
+  int _getSelectedTokenCount() {
     return _selectedApps.totalCount;
   }
 
@@ -325,14 +396,26 @@ class _HomePageState extends State<HomePage> {
                           ),
                           const SizedBox(height: 12),
                           Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
                             children: [
                               ElevatedButton(
                                 onPressed: _authorizationStatus == 'authorized'
-                                    ? _selectAppsToDiscourage
+                                    ? _showFamilyActivityPicker
                                     : null,
-                                child: const Text('Select Apps to Discourage'),
+                                child: const Text('Select Apps'),
                               ),
-                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed:
+                                    _authorizationStatus == 'authorized' &&
+                                        _getSelectedTokenCount() > 0
+                                    ? _discourageSelectedApps
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                ),
+                                child: const Text('Discourage Selected'),
+                              ),
                               ElevatedButton(
                                 onPressed: _encourageAll,
                                 style: ElevatedButton.styleFrom(
@@ -343,9 +426,17 @@ class _HomePageState extends State<HomePage> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: _loadDiscouragedApps,
-                            child: const Text('Refresh Discouraged Apps'),
+                          Row(
+                            children: [
+                              TextButton(
+                                onPressed: _loadSelectedApps,
+                                child: const Text('Refresh Selected'),
+                              ),
+                              TextButton(
+                                onPressed: _loadDiscouragedApps,
+                                child: const Text('Refresh Discouraged'),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 16),
                           const Divider(),
@@ -395,7 +486,7 @@ class _HomePageState extends State<HomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Discouraged Apps (${_getTotalTokenCount()})',
+                            'Selected Apps (${_getSelectedTokenCount()})',
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -465,7 +556,100 @@ class _HomePageState extends State<HomePage> {
                               _selectedApps.webDomainTokens.isEmpty)
                             const Text(
                               'No apps, categories, or web domains '
-                              'selected yet',
+                              'selected yet. Tap "Select Apps" to choose.',
+                              style: TextStyle(
+                                fontStyle: FontStyle.italic,
+                                color: Colors.grey,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+
+                  // Discouraged Apps Display
+                  // Discouraged Apps Display
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Discouraged Apps (${_getTotalTokenCount()})',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          if (_discouragedApps
+                              .applicationTokens
+                              .isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            ExpansionTile(
+                              title: const Text('Discouraged Applications'),
+                              children: _discouragedApps.applicationTokens
+                                  .asMap()
+                                  .entries
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: AppLabelView(
+                                        tokenType: TokenType.application,
+                                        encodedToken: entry.value,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          if (_discouragedApps.categoryTokens.isNotEmpty) ...[
+                            ExpansionTile(
+                              title: const Text('Discouraged Categories'),
+                              children: _discouragedApps.categoryTokens
+                                  .asMap()
+                                  .entries
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: AppLabelView(
+                                        tokenType: TokenType.category,
+                                        encodedToken: entry.value,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          if (_discouragedApps.webDomainTokens.isNotEmpty) ...[
+                            ExpansionTile(
+                              title: const Text('Discouraged Web Domains'),
+                              children: _discouragedApps.webDomainTokens
+                                  .asMap()
+                                  .entries
+                                  .map(
+                                    (entry) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: AppLabelView(
+                                        tokenType: TokenType.webDomain,
+                                        encodedToken: entry.value,
+                                      ),
+                                    ),
+                                  )
+                                  .toList(),
+                            ),
+                            const SizedBox(height: 16),
+                          ],
+                          if (_discouragedApps.applicationTokens.isEmpty &&
+                              _discouragedApps.categoryTokens.isEmpty &&
+                              _discouragedApps.webDomainTokens.isEmpty)
+                            const Text(
+                              'No apps, categories, or web domains '
+                              'are currently discouraged.',
                               style: TextStyle(
                                 fontStyle: FontStyle.italic,
                                 color: Colors.grey,
@@ -476,20 +660,22 @@ class _HomePageState extends State<HomePage> {
                             ExpansionTile(
                               title: const Text('Raw Tokens (Debug)'),
                               children: [
-                                if (_selectedApps.applicationTokens.isNotEmpty)
+                                if (_discouragedApps
+                                    .applicationTokens
+                                    .isNotEmpty)
                                   _buildTokenSection(
                                     'Application Tokens',
-                                    _selectedApps.applicationTokens,
+                                    _discouragedApps.applicationTokens,
                                   ),
-                                if (_selectedApps.categoryTokens.isNotEmpty)
+                                if (_discouragedApps.categoryTokens.isNotEmpty)
                                   _buildTokenSection(
                                     'Category Tokens',
-                                    _selectedApps.categoryTokens,
+                                    _discouragedApps.categoryTokens,
                                   ),
-                                if (_selectedApps.webDomainTokens.isNotEmpty)
+                                if (_discouragedApps.webDomainTokens.isNotEmpty)
                                   _buildTokenSection(
                                     'Web Domain Tokens',
-                                    _selectedApps.webDomainTokens,
+                                    _discouragedApps.webDomainTokens,
                                   ),
                               ],
                             ),

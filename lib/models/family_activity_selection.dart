@@ -8,7 +8,6 @@ class FamilyActivitySelection {
     required this.applicationTokens,
     required this.categoryTokens,
     required this.webDomainTokens,
-    this.includeEntireCategory,
   });
 
   /// Create a FamilyActivitySelection from a map
@@ -20,7 +19,6 @@ class FamilyActivitySelection {
           (map['categoryTokens'] as List<dynamic>?)?.cast<String>() ?? [],
       webDomainTokens:
           (map['webDomainTokens'] as List<dynamic>?)?.cast<String>() ?? [],
-      includeEntireCategory: map['includeEntireCategory'] as bool?,
     );
   }
 
@@ -42,11 +40,6 @@ class FamilyActivitySelection {
   /// Tokens representing web domains selected by the user
   final List<String> webDomainTokens;
 
-  /// Whether the selection should include applications and web domains from the
-  /// selected categories
-  /// Available on iOS 15.2+
-  final bool? includeEntireCategory;
-
   /// Convert the selection to a map
   Map<String, dynamic> toMap() {
     final map = <String, dynamic>{
@@ -54,11 +47,6 @@ class FamilyActivitySelection {
       'categoryTokens': categoryTokens,
       'webDomainTokens': webDomainTokens,
     };
-
-    if (includeEntireCategory != null) {
-      map['includeEntireCategory'] = includeEntireCategory;
-    }
-
     return map;
   }
 
@@ -86,8 +74,7 @@ class FamilyActivitySelection {
     return other is FamilyActivitySelection &&
         _listEquals(other.applicationTokens, applicationTokens) &&
         _listEquals(other.categoryTokens, categoryTokens) &&
-        _listEquals(other.webDomainTokens, webDomainTokens) &&
-        other.includeEntireCategory == includeEntireCategory;
+        _listEquals(other.webDomainTokens, webDomainTokens);
   }
 
   @override
@@ -96,7 +83,6 @@ class FamilyActivitySelection {
       Object.hashAll(applicationTokens),
       Object.hashAll(categoryTokens),
       Object.hashAll(webDomainTokens),
-      includeEntireCategory,
     );
   }
 
@@ -104,8 +90,7 @@ class FamilyActivitySelection {
   String toString() {
     return 'FamilyActivitySelection(apps: ${applicationTokens.length}, '
         'categories: ${categoryTokens.length}, '
-        'webDomains: ${webDomainTokens.length}, '
-        'includeEntireCategory: $includeEntireCategory)';
+        'webDomains: ${webDomainTokens.length})';
   }
 
   /// Helper method to compare lists

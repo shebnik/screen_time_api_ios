@@ -36,10 +36,13 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
   }
 
   @override
-  Future<FamilyActivitySelection> selectAppsToDiscourage() async {
+  Future<FamilyActivitySelection> showFamilyActivityPicker([
+    Map<String, dynamic>? uiConfig,
+  ]) async {
     try {
       final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
-        'selectAppsToDiscourage',
+        'showFamilyActivityPicker',
+        uiConfig,
       );
       if (result != null) {
         return FamilyActivitySelection.fromMap(
@@ -48,8 +51,40 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
       }
       return FamilyActivitySelection.empty();
     } catch (e) {
-      debugPrint('Error in selectAppsToDiscourage: $e');
+      debugPrint('Error in showFamilyActivityPicker: $e');
       return FamilyActivitySelection.empty();
+    }
+  }
+
+  @override
+  Future<FamilyActivitySelection> getSelectedApps() async {
+    try {
+      final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
+        'getSelectedApps',
+      );
+      if (result != null) {
+        return FamilyActivitySelection.fromMap(
+          Map<String, dynamic>.from(result),
+        );
+      }
+      return FamilyActivitySelection.empty();
+    } catch (e) {
+      debugPrint('Error in getSelectedApps: $e');
+      return FamilyActivitySelection.empty();
+    }
+  }
+
+  @override
+  Future<bool> discourageApps(FamilyActivitySelection selection) async {
+    try {
+      final result = await methodChannel.invokeMethod<bool>(
+        'discourageApps',
+        selection.toMap(),
+      );
+      return result ?? false;
+    } catch (e) {
+      debugPrint('Error in discourageApps: $e');
+      return false;
     }
   }
 
