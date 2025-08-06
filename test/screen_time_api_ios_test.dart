@@ -42,6 +42,48 @@ class MockScreenTimeApiIosPlatform
 
   @override
   Future<void> encourageAll() => Future.value();
+
+  @override
+  Future<bool> setAppQuotas(QuotaConfiguration quotaConfig) =>
+      Future.value(true);
+
+  @override
+  Future<QuotaConfiguration> getAppQuotas() =>
+      Future.value(QuotaConfiguration.empty());
+
+  @override
+  Future<bool> clearLogs() => Future.value(true);
+
+  @override
+  Future<Map<String, dynamic>> configure({
+    String? appGroupIdentifier,
+    String? logFilePath,
+  }) => Future.value({
+    'appGroupIdentifier': appGroupIdentifier,
+    'logFilePath': logFilePath,
+  });
+
+  @override
+  Future<bool> configureLogging({required String logFilePath}) =>
+      Future.value(true);
+
+  @override
+  Future<String> getLogContent() => Future.value('Log content');
+
+  @override
+  Future<Map<String, dynamic>> getWebContentBlocking() => Future.value({
+    'adultContentEnabled': false,
+    'blockedDomains': <String>[],
+  });
+
+  @override
+  Future<void> setWebContentBlocking({
+    required bool adultContentEnabled,
+    List<String> blockedDomains = const [],
+  }) async {
+    // Simulate setting web content blocking
+    return Future.value();
+  }
 }
 
 void main() {

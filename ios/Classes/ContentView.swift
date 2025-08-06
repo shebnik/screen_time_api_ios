@@ -5,8 +5,8 @@
 //  Created by Kei Fujikawa on 2023/10/11.
 //
 
-import SwiftUI
 import FamilyControls
+import SwiftUI
 
 // Extension to convert SwiftUI Font to UIFont
 extension Font {
@@ -44,39 +44,47 @@ extension Font {
 struct ContentView: View {
     @StateObject var model = FamilyControlModel.shared
     @Environment(\.presentationMode) var presentationMode
-    @State private var pickerKey = UUID() // Add this to force picker refresh
+    @State private var pickerKey = UUID()  // Add this to force picker refresh
     var onSave: (() -> Void)?
     var onCancel: (() -> Void)?
     let uiConfig: UIConfiguration
-    
-    init(onSave: (() -> Void)? = nil, onCancel: (() -> Void)? = nil, uiConfig: UIConfiguration = .default) {
+
+    init(
+        onSave: (() -> Void)? = nil, onCancel: (() -> Void)? = nil,
+        uiConfig: UIConfiguration = .default
+    ) {
         self.onSave = onSave
         self.onCancel = onCancel
         self.uiConfig = uiConfig
     }
-    
+
     var body: some View {
         VStack(spacing: 12) {
             // Family Activity Picker
             FamilyActivityPicker(
                 selection: $model.tempSelection
             )
-            .id(pickerKey) // Add this to force refresh when key changes
+            .id(pickerKey)  // Add this to force refresh when key changes
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
+
             // Selection summary at the bottom
             VStack(spacing: 12) {
                 HStack(spacing: 16) {
-                    Text("\(uiConfig.appsCountText): \(model.tempSelection.applicationTokens.count)")
-                    Text("\(uiConfig.websitesCountText): \(model.tempSelection.webDomainTokens.count)")
+                    Text(
+                        "\(uiConfig.appsCountText): \(model.tempSelection.applicationTokens.count)")
+                    Text(
+                        "\(uiConfig.websitesCountText): \(model.tempSelection.webDomainTokens.count)"
+                    )
                     if model.tempSelection.categoryTokens.count > 0 {
-                        Text("\(uiConfig.categoriesCountText): \(model.tempSelection.categoryTokens.count)")
+                        Text(
+                            "\(uiConfig.categoriesCountText): \(model.tempSelection.categoryTokens.count)"
+                        )
                     }
                 }
                 .font(uiConfig.countTextFont)
                 .foregroundColor(uiConfig.countTextColor)
                 .padding(.horizontal)
-                
+
                 // Save button below the count
                 Button(action: saveSelection) {
                     Text(uiConfig.saveButtonText)
@@ -113,7 +121,7 @@ struct ContentView: View {
         }
         .onAppear {
             model.resetTempSelection()
-            
+
             // Apply custom navigation title font if provided
             if let titleFont = uiConfig.navigationTitleFont {
                 let appearance = UINavigationBarAppearance()
@@ -126,17 +134,17 @@ struct ContentView: View {
             }
         }
     }
-    
+
     private func saveSelection() {
         model.saveCurrentSelection()
         onSave?()
     }
-    
+
     private func cancelSelection() {
         model.resetTempSelection()
         onCancel?()
     }
-    
+
     private func clearSelection() {
         withAnimation {
             model.clearTempSelection()

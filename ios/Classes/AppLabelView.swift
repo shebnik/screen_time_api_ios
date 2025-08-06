@@ -5,9 +5,9 @@
 //  Created by Nikita on 8/5/25.
 //
 
-import SwiftUI
 import FamilyControls
 import ManagedSettings
+import SwiftUI
 
 enum TokenType {
     case application(ApplicationToken)
@@ -17,7 +17,7 @@ enum TokenType {
 
 struct AppLabelView: View {
     let tokenType: TokenType
-    
+
     var body: some View {
         VStack(alignment: .center, spacing: 8) {
             if #available(iOS 15.2, *) {
