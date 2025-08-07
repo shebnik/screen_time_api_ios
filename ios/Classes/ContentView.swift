@@ -120,9 +120,8 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            model.resetTempSelection()
-
-            // Apply custom navigation title font if provided
+            // Don't reset temp selection on appear - keep whatever was pre-set from Flutter
+            // Just apply custom navigation title font if provided
             if let titleFont = uiConfig.navigationTitleFont {
                 let appearance = UINavigationBarAppearance()
                 appearance.configureWithOpaqueBackground()
@@ -136,12 +135,12 @@ struct ContentView: View {
     }
 
     private func saveSelection() {
-        model.saveCurrentSelection()
+        // Return the current temp selection to Flutter
         onSave?()
     }
 
     private func cancelSelection() {
-        model.resetTempSelection()
+        // Return null to Flutter by triggering cancel callback
         onCancel?()
     }
 
@@ -151,6 +150,7 @@ struct ContentView: View {
             // Force the picker to refresh by changing its identity
             pickerKey = UUID()
         }
+        // Don't close the sheet - just clear the current selection
     }
 }
 

@@ -35,7 +35,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  final _screenTimeApiIosPlugin = ScreenTimeApiIos();
+  late final ScreenTimeApiIos _screenTimeApiIosPlugin;
 
   FamilyActivitySelection _selectedApps = FamilyActivitySelection.empty();
   FamilyActivitySelection _discouragedApps = FamilyActivitySelection.empty();
@@ -54,38 +54,44 @@ class _HomePageState extends State<HomePage> {
   // Configuration settings
   String _appGroupIdentifier = 'group.com.example.screenTimeApiIosExample';
   String? _configurationStatus;
+  String? logFilePath;
 
   @override
   void initState() {
     super.initState();
     _configurePlugin().then((_) {
-      _checkAuthorizationStatus();
-      _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
-        if (_authorizationStatus == AuthorizationStatus.authorized &&
-            _appQuotas.isNotEmpty) {
-          _loadAppQuotas();
-        }
-      });
+      // Initialize the plugin instance after configuration
+      try {
+        _screenTimeApiIosPlugin = ScreenTimeApiIos();
+        _checkAuthorizationStatus();
+        _refreshTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+          if (_authorizationStatus == AuthorizationStatus.authorized &&
+              _appQuotas.isNotEmpty) {
+            _loadAppQuotas();
+          }
+        });
+      } catch (e) {
+        debugPrint('Failed to initialize plugin after configuration: $e');
+        setState(() {
+          _configurationStatus = 'Failed to initialize plugin: $e';
+        });
+      }
     });
   }
 
   Future<void> _configurePlugin() async {
     try {
       final documentsDir = await getApplicationDocumentsDirectory();
-      final logFilePath = '${documentsDir.path}/screen_time_plugin.log';
+      logFilePath = '${documentsDir.path}/screen_time_plugin.log';
 
-      // Configure both app group identifier and logging
-      final result = await _screenTimeApiIosPlugin.configure(
+      // Configure globally using static method
+      final result = await ScreenTimeApiIos.configure(
         appGroupIdentifier: _appGroupIdentifier,
         logFilePath: logFilePath,
       );
 
       setState(() {
-        final configuredList = result['configured'] as List<dynamic>?;
-        _configurationStatus =
-            'Plugin configured successfully. '
-            'Configured: ${configuredList?.join(', ') ?? 'none'}. '
-            'App Group: ${result['appGroupIdentifier'] ?? 'unknown'}';
+        _configurationStatus = ScreenTimeApiIos.getConfigurationStatus();
       });
 
       debugPrint('Plugin configured: $result');
@@ -95,24 +101,6 @@ class _HomePageState extends State<HomePage> {
         _configurationStatus = 'Configuration failed: $e';
       });
       debugPrint('Failed to configure plugin: $e');
-      // Fallback to just configuring logging
-      try {
-        final documentsDir = await getApplicationDocumentsDirectory();
-        final logFilePath = '${documentsDir.path}/screen_time_plugin.log';
-
-        final success = await _screenTimeApiIosPlugin.configureLogging(
-          logFilePath: logFilePath,
-        );
-        setState(() {
-          _configurationStatus = 'Fallback logging configured: $success';
-        });
-        debugPrint('Fallback logging configured: $success');
-      } catch (e2) {
-        setState(() {
-          _configurationStatus = 'All configuration failed: $e2';
-        });
-        debugPrint('Failed to configure logging fallback: $e2');
-      }
     }
   }
 
@@ -131,7 +119,6 @@ class _HomePageState extends State<HomePage> {
         _authorizationStatus = response.status;
       });
       if (_authorizationStatus == AuthorizationStatus.authorized) {
-        await _loadSelectedApps();
         await _loadDiscouragedApps();
         await _loadAdultWebsiteBlocking();
         await _loadAppQuotas();
@@ -157,8 +144,7 @@ class _HomePageState extends State<HomePage> {
       if (response.isSuccess) {
         _showSnackBar('Authorization granted!', Colors.green);
         // Load data now that we're authorized
-        await Future.wait([
-          _loadSelectedApps(),
+        await Future.wait(<Future<void>>[
           _loadDiscouragedApps(),
           _loadAdultWebsiteBlocking(),
           _loadWebContentBlocking(),
@@ -175,22 +161,6 @@ class _HomePageState extends State<HomePage> {
       _showSnackBar('Authorization failed: $e', Colors.red);
     } finally {
       setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _loadSelectedApps() async {
-    if (_authorizationStatus != AuthorizationStatus.authorized) return;
-
-    try {
-      final apps = await _screenTimeApiIosPlugin.getSelectedApps();
-      setState(() {
-        _selectedApps = apps;
-      });
-    } catch (e, s) {
-      debugPrintStack(
-        label: 'Error loading selected apps: $e',
-        stackTrace: s,
-      );
     }
   }
 
@@ -232,10 +202,8 @@ class _HomePageState extends State<HomePage> {
     try {
       final config = await _screenTimeApiIosPlugin.getWebContentBlocking();
       setState(() {
-        _adultWebsiteBlocking = config['adultContentEnabled'] as bool? ?? false;
-        _blockedDomains = List<String>.from(
-          config['blockedDomains'] as List? ?? [],
-        );
+        _adultWebsiteBlocking = config.adultContentBlocked;
+        _blockedDomains = List<String>.from(config.blockedDomains);
       });
     } catch (e, s) {
       debugPrintStack(
@@ -270,10 +238,16 @@ class _HomePageState extends State<HomePage> {
 
     setState(() => _isLoading = true);
     try {
-      await _screenTimeApiIosPlugin.setWebContentBlocking(
-        adultContentEnabled: _adultWebsiteBlocking,
+      final config = await _screenTimeApiIosPlugin.setWebContentBlocking(
+        adultContentBlocked: _adultWebsiteBlocking,
         blockedDomains: _blockedDomains,
       );
+
+      // Update local state with the returned configuration
+      setState(() {
+        _adultWebsiteBlocking = config.adultContentBlocked;
+        _blockedDomains = List<String>.from(config.blockedDomains);
+      });
 
       _showSnackBar(
         'Web content blocking updated successfully',
@@ -324,16 +298,21 @@ class _HomePageState extends State<HomePage> {
 
     setState(() => _isLoading = true);
     try {
-      _selectedApps = await _screenTimeApiIosPlugin.showFamilyActivityPicker(
-        const UICustomization(
+      final selection = await _screenTimeApiIosPlugin.showFamilyActivityPicker(
+        uiCustomization: const UICustomization(
           saveButtonFontSize: 18,
           countTextFontSize: 16,
           navigationTitleFontSize: 20,
           saveButtonColor: Color(0xFFF4FF5F),
         ),
+        preSelectedApps: _selectedApps,
       );
-      setState(() {});
-      _showSnackBar('Apps selected successfully!', Colors.green);
+      if (selection != null) {
+        setState(() {
+          _selectedApps = selection;
+        });
+        _showSnackBar('Apps selected successfully!', Colors.green);
+      }
     } catch (e, s) {
       debugPrintStack(
         label: 'Error selecting apps: $e',
@@ -411,6 +390,34 @@ class _HomePageState extends State<HomePage> {
         stackTrace: s,
       );
       _showSnackBar('Failed to encourage all apps: $e', Colors.red);
+    } finally {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _encourageSelected() async {
+    if (_selectedApps.isEmpty) {
+      _showSnackBar('No apps selected to encourage', Colors.orange);
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      await _screenTimeApiIosPlugin.encourage(_selectedApps);
+
+      // Refresh the discouraged apps list to show the updated state
+      await _loadDiscouragedApps();
+
+      _showSnackBar(
+        'Selected apps encouraged successfully!',
+        Colors.green,
+      );
+    } catch (e, s) {
+      debugPrintStack(
+        label: 'Error encouraging selected apps: $e',
+        stackTrace: s,
+      );
+      _showSnackBar('Failed to encourage selected apps: $e', Colors.red);
     } finally {
       setState(() => _isLoading = false);
     }
@@ -684,19 +691,24 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 child: const Text('Encourage All'),
                               ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed:
+                                    _authorizationStatus ==
+                                            AuthorizationStatus.authorized &&
+                                        _selectedApps.isNotEmpty
+                                    ? _encourageSelected
+                                    : null,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange[300],
+                                ),
+                                child: const Text('Encourage Selected'),
+                              ),
                             ],
                           ),
                           const SizedBox(height: 8),
                           Wrap(
                             children: [
-                              TextButton(
-                                onPressed:
-                                    _authorizationStatus ==
-                                        AuthorizationStatus.authorized
-                                    ? _loadSelectedApps
-                                    : null,
-                                child: const Text('Refresh Selected'),
-                              ),
                               TextButton(
                                 onPressed:
                                     _authorizationStatus ==
@@ -1218,115 +1230,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _showLogViewer(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (context) => LogViewerScreen(plugin: _screenTimeApiIosPlugin),
-      ),
-    );
-  }
-}
-
-class LogViewerScreen extends StatefulWidget {
-  const LogViewerScreen({required this.plugin, super.key});
-  final ScreenTimeApiIos plugin;
-
-  @override
-  State<LogViewerScreen> createState() => _LogViewerScreenState();
-}
-
-class _LogViewerScreenState extends State<LogViewerScreen> {
-  String _logContent = '';
-  bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadLogs();
-  }
-
-  Future<void> _loadLogs() async {
-    setState(() => _isLoading = true);
-    try {
-      final content = await widget.plugin.getLogContent();
-      setState(() => _logContent = content);
-    } catch (e) {
-      setState(() => _logContent = 'Error loading logs: $e');
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _clearLogs() async {
-    final success = await widget.plugin.clearLogs();
-    if (mounted) {
-      if (success) {
-        setState(() => _logContent = '');
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Logs cleared successfully')),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to clear logs')),
-        );
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Log Viewer'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadLogs,
-            tooltip: 'Refresh Logs',
-          ),
-          IconButton(
-            icon: const Icon(Icons.clear),
-            onPressed: _clearLogs,
-            tooltip: 'Clear Logs',
-          ),
-        ],
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Log Content:',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey),
-                        borderRadius: BorderRadius.circular(8),
-                        color: Colors.grey[50],
-                      ),
-                      child: SingleChildScrollView(
-                        child: Text(
-                          _logContent.isEmpty
-                              ? 'No logs available'
-                              : _logContent,
-                          style: const TextStyle(
-                            fontFamily: 'monospace',
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-    );
+    debugPrint(logFilePath);
   }
 }

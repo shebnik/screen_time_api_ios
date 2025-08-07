@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:screen_time_api_ios/models/family_activity_selection.dart';
 import 'package:screen_time_api_ios/models/quota_configuration.dart';
+import 'package:screen_time_api_ios/models/web_content_blocking_configuration.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_platform_interface.dart';
 
 /// An implementation of [ScreenTimeApiIosPlatform] that uses method channels.
@@ -9,14 +10,6 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
   /// The method channel used to interact with the native platform.
   @visibleForTesting
   final methodChannel = const MethodChannel('screen_time_api_ios');
-
-  @override
-  Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>(
-      'getPlatformVersion',
-    );
-    return version;
-  }
 
   @override
   Future<Map<String, dynamic>> configure({
@@ -43,42 +36,6 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
     } catch (e) {
       debugPrint('Error in configure: $e');
       return {'error': e.toString()};
-    }
-  }
-
-  @override
-  Future<bool> configureLogging({required String logFilePath}) async {
-    try {
-      final result = await methodChannel.invokeMethod<bool>(
-        'configureLogging',
-        {'logFilePath': logFilePath},
-      );
-      return result ?? false;
-    } catch (e) {
-      debugPrint('Error in configureLogging: $e');
-      return false;
-    }
-  }
-
-  @override
-  Future<String> getLogContent() async {
-    try {
-      final result = await methodChannel.invokeMethod<String>('getLogContent');
-      return result ?? 'No log content available';
-    } catch (e) {
-      debugPrint('Error in getLogContent: $e');
-      return 'Error retrieving log content: $e';
-    }
-  }
-
-  @override
-  Future<bool> clearLogs() async {
-    try {
-      final result = await methodChannel.invokeMethod<bool>('clearLogs');
-      return result ?? false;
-    } catch (e) {
-      debugPrint('Error in clearLogs: $e');
-      return false;
     }
   }
 
@@ -115,40 +72,25 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
   }
 
   @override
-  Future<FamilyActivitySelection> showFamilyActivityPicker([
-    Map<String, dynamic>? uiConfig,
+  Future<FamilyActivitySelection?> showFamilyActivityPicker(
+    Map<String, dynamic>? uiConfig, [
+    FamilyActivitySelection? preSelectedApps,
   ]) async {
-    try {
-      final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
-        'showFamilyActivityPicker',
-        uiConfig,
-      );
-      if (result != null) {
-        final convertedMap = _convertToStringDynamicMap(result);
-        return FamilyActivitySelection.fromMap(convertedMap);
-      }
-      return FamilyActivitySelection.empty();
-    } catch (e) {
-      debugPrint('Error in showFamilyActivityPicker: $e');
-      return FamilyActivitySelection.empty();
-    }
-  }
+    final preSelectedMap = preSelectedApps?.toMap();
 
-  @override
-  Future<FamilyActivitySelection> getSelectedApps() async {
-    try {
-      final result = await methodChannel.invokeMethod<Map<Object?, Object?>>(
-        'getSelectedApps',
-      );
-      if (result != null) {
-        final convertedMap = _convertToStringDynamicMap(result);
-        return FamilyActivitySelection.fromMap(convertedMap);
-      }
-      return FamilyActivitySelection.empty();
-    } catch (e) {
-      debugPrint('Error in getSelectedApps: $e');
-      return FamilyActivitySelection.empty();
+    final result = await methodChannel.invokeMethod<Map<dynamic, dynamic>?>(
+      'showFamilyActivityPicker',
+      {
+        'uiConfig': uiConfig,
+        'preSelectedApps': preSelectedMap,
+      },
+    );
+
+    if (result == null) {
+      return null;
     }
+
+    return FamilyActivitySelection.fromMap(Map<String, dynamic>.from(result));
   }
 
   @override
@@ -188,6 +130,11 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
   }
 
   @override
+  Future<void> encourage(FamilyActivitySelection selection) async {
+    await methodChannel.invokeMethod('encourage', selection.toMap());
+  }
+
+  @override
   Future<void> setAdultWebsiteBlocking({required bool enabled}) async {
     await methodChannel.invokeMethod('setAdultWebsiteBlocking', {
       'enabled': enabled,
@@ -203,14 +150,18 @@ class MethodChannelScreenTimeApiIos extends ScreenTimeApiIosPlatform {
   }
 
   @override
-  Future<void> setWebContentBlocking({
-    required bool adultContentEnabled,
+  Future<WebContentBlockingConfiguration> setWebContentBlocking({
+    required bool adultContentBlocked,
     List<String> blockedDomains = const [],
   }) async {
     await methodChannel.invokeMethod('setWebContentBlocking', {
-      'adultContentEnabled': adultContentEnabled,
+      'adultContentBlocked': adultContentBlocked,
       'blockedDomains': blockedDomains,
     });
+
+    // Return the current configuration after the change
+    final result = await getWebContentBlocking();
+    return WebContentBlockingConfiguration.fromMap(result);
   }
 
   @override

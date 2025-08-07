@@ -1,6 +1,7 @@
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:screen_time_api_ios/models/family_activity_selection.dart';
 import 'package:screen_time_api_ios/models/quota_configuration.dart';
+import 'package:screen_time_api_ios/models/web_content_blocking_configuration.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_method_channel.dart';
 
 abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
@@ -24,10 +25,6 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<String?> getPlatformVersion() {
-    throw UnimplementedError('platformVersion() has not been implemented.');
-  }
-
   /// Configure the plugin with various settings
   /// [appGroupIdentifier] - The app group identifier to use for shared data
   /// [logFilePath] - Optional path for log files
@@ -37,18 +34,6 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
     String? logFilePath,
   }) {
     throw UnimplementedError('configure() has not been implemented.');
-  }
-
-  Future<bool> configureLogging({required String logFilePath}) {
-    throw UnimplementedError('configureLogging() has not been implemented.');
-  }
-
-  Future<String> getLogContent() {
-    throw UnimplementedError('getLogContent() has not been implemented.');
-  }
-
-  Future<bool> clearLogs() {
-    throw UnimplementedError('clearLogs() has not been implemented.');
   }
 
   Future<Map<String, dynamic>> requestAuthorization() {
@@ -63,16 +48,13 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
     );
   }
 
-  Future<FamilyActivitySelection> showFamilyActivityPicker([
-    Map<String, dynamic>? uiConfig,
+  Future<FamilyActivitySelection?> showFamilyActivityPicker(
+    Map<String, dynamic>? uiConfig, [
+    FamilyActivitySelection? preSelectedApps,
   ]) {
     throw UnimplementedError(
       'showFamilyActivityPicker() has not been implemented.',
     );
-  }
-
-  Future<FamilyActivitySelection> getSelectedApps() {
-    throw UnimplementedError('getSelectedApps() has not been implemented.');
   }
 
   Future<bool> discourageApps(FamilyActivitySelection selection) {
@@ -85,6 +67,12 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
 
   Future<void> encourageAll() {
     throw UnimplementedError('encourageAll() has not been implemented.');
+  }
+
+  /// Remove restrictions for specific apps/categories in the selection
+  /// [selection] contains the apps/categories to remove restrictions from
+  Future<void> encourage(FamilyActivitySelection selection) {
+    throw UnimplementedError('encourage() has not been implemented.');
   }
 
   Future<void> setAdultWebsiteBlocking({required bool enabled}) {
@@ -100,10 +88,11 @@ abstract class ScreenTimeApiIosPlatform extends PlatformInterface {
   }
 
   /// Set blocked domains and adult website blocking together
-  /// [adultContentEnabled] - Whether to enable the built-in adult content filter
+  /// [adultContentBlocked] - Whether to enable the built-in adult content filter
   /// [blockedDomains] - List of specific domains to block (max 50)
-  Future<void> setWebContentBlocking({
-    required bool adultContentEnabled,
+  /// Returns the current configuration after applying changes
+  Future<WebContentBlockingConfiguration> setWebContentBlocking({
+    required bool adultContentBlocked,
     List<String> blockedDomains = const [],
   }) {
     throw UnimplementedError(

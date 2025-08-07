@@ -1,7 +1,9 @@
 import 'package:screen_time_api_ios/models/authorization_response.dart';
 import 'package:screen_time_api_ios/models/family_activity_selection.dart';
+import 'package:screen_time_api_ios/models/plugin_configuration.dart';
 import 'package:screen_time_api_ios/models/quota_configuration.dart';
 import 'package:screen_time_api_ios/models/ui_customization.dart';
+import 'package:screen_time_api_ios/models/web_content_blocking_configuration.dart';
 import 'package:screen_time_api_ios/screen_time_api_ios_platform_interface.dart';
 
 // Export models for external use
@@ -9,51 +11,100 @@ export 'models/app_quota.dart';
 export 'models/authorization_response.dart';
 export 'models/authorization_status.dart';
 export 'models/family_activity_selection.dart';
+export 'models/plugin_configuration.dart';
 export 'models/quota_configuration.dart';
 export 'models/token_type.dart';
 export 'models/ui_customization.dart';
+export 'models/web_content_blocking_configuration.dart';
 // Export widgets
 export 'widgets/app_label_view.dart';
 
 class ScreenTimeApiIos {
-  Future<String?> getPlatformVersion() {
-    return ScreenTimeApiIosPlatform.instance.getPlatformVersion();
+  /// Constructor that ensures the plugin is configured
+  /// If no global configuration exists, this will throw an exception
+  ScreenTimeApiIos() {
+    if (!_isConfigured) {
+      throw StateError(
+        'ScreenTimeApiIos must be configured before use. '
+        'Call ScreenTimeApiIos.configure() first.',
+      );
+    }
   }
+  // Static configuration state
+  static PluginConfiguration? _globalConfiguration;
+  static bool _isConfigured = false;
 
-  /// Configure the plugin with various settings
-  /// [appGroupIdentifier] - The app group identifier to use for shared data
-  /// between app and extension
-  /// [logFilePath] - Optional path where log files should be written
-  /// Returns a map containing configuration results and current settings
-  Future<Map<String, dynamic>> configure({
-    String? appGroupIdentifier,
+  /// Configure the app's internal settings needed for Screen Time APIs
+  ///
+  /// This is a static method that configures the plugin globally.
+  /// All instances of ScreenTimeApiIos will use this configuration.
+  ///
+  /// [appGroupIdentifier] is the app group ID configured in Apple Developer Portal
+  /// that allows data sharing between the main app and device activity monitor extension
+  ///
+  /// [logFilePath] specifies where to store plugin logs (optional)
+  ///
+  /// Returns a [PluginConfiguration] object indicating success or failure
+  /// with relevant configuration details
+  static Future<PluginConfiguration> configure({
+    required String appGroupIdentifier,
     String? logFilePath,
-  }) {
-    return ScreenTimeApiIosPlatform.instance.configure(
+  }) async {
+    final result = await ScreenTimeApiIosPlatform.instance.configure(
       appGroupIdentifier: appGroupIdentifier,
       logFilePath: logFilePath,
     );
+    _globalConfiguration = PluginConfiguration.fromMap(result);
+    _isConfigured = true;
+    return _globalConfiguration!;
   }
 
-  /// Configure logging for the iOS plugin
-  /// [logFilePath] - The absolute path where log files should be written
-  /// Returns true if logging was configured successfully, false otherwise
-  Future<bool> configureLogging({required String logFilePath}) {
-    return ScreenTimeApiIosPlatform.instance.configureLogging(
-      logFilePath: logFilePath,
+  /// Get the current global configuration if available
+  static PluginConfiguration? get globalConfiguration => _globalConfiguration;
+
+  /// Check if the plugin has been configured globally
+  static bool get isConfigured => _isConfigured;
+
+  /// Get configuration status information
+  /// Returns a formatted string with current configuration details
+  static String getConfigurationStatus() {
+    if (!_isConfigured || _globalConfiguration == null) {
+      return 'Plugin not configured. Call ScreenTimeApiIos.configure() first.';
+    }
+
+    final config = _globalConfiguration!;
+    return 'Plugin configured successfully. '
+        'App Group: ${config.appGroupIdentifier ?? 'unknown'}. '
+        'Is Configured: ${config.isConfigured}. '
+        'Log Path: ${config.logFilePath ?? 'not set'}.';
+  }
+
+  /// Show the native iOS family activity picker to let users select apps/categories to restrict.
+  ///
+  /// [uiCustomization] can be used to customize the appearance of the picker
+  /// [preSelectedApps] allows showing the picker with pre-selected apps/categories
+  ///
+  /// Returns the selected apps/categories if user saves, null if user cancels or dismisses.
+  /// If user taps reset, it only clears the current selection without closing the picker.
+  ///
+  /// Example:
+  /// ```dart
+  /// final selection = await screenTimeApi.showFamilyActivityPicker();
+  /// if (selection != null) {
+  ///   // User saved a selection
+  ///   await screenTimeApi.discourageApps(selection);
+  /// } else {
+  ///   // User cancelled or dismissed
+  /// }
+  /// ```
+  Future<FamilyActivitySelection?> showFamilyActivityPicker({
+    UICustomization? uiCustomization,
+    FamilyActivitySelection? preSelectedApps,
+  }) async {
+    return ScreenTimeApiIosPlatform.instance.showFamilyActivityPicker(
+      uiCustomization?.toMap(),
+      preSelectedApps,
     );
-  }
-
-  /// Get the current log file content
-  /// Returns the content of the log file as a string
-  Future<String> getLogContent() {
-    return ScreenTimeApiIosPlatform.instance.getLogContent();
-  }
-
-  /// Clear all log content
-  /// Returns true if logs were cleared successfully, false otherwise
-  Future<bool> clearLogs() {
-    return ScreenTimeApiIosPlatform.instance.clearLogs();
   }
 
   /// Request authorization for Screen Time API access
@@ -79,27 +130,6 @@ class ScreenTimeApiIos {
     return response.status.isAuthorized;
   }
 
-  /// Present the family activity picker with UI customization options
-  /// Requires prior authorization - call requestAuthorization() first
-  /// Returns a FamilyActivitySelection with separated token types
-  /// Throws an exception if not authorized
-  ///
-  /// [uiCustomization] Optional UICustomization object for customizing the UI
-  /// appearance
-  Future<FamilyActivitySelection> showFamilyActivityPicker([
-    UICustomization? uiCustomization,
-  ]) async {
-    return ScreenTimeApiIosPlatform.instance.showFamilyActivityPicker(
-      uiCustomization?.toMap(),
-    );
-  }
-
-  /// Get the currently saved/selected apps and categories
-  /// Returns the persistent selection that was last saved
-  Future<FamilyActivitySelection> getSelectedApps() async {
-    return ScreenTimeApiIosPlatform.instance.getSelectedApps();
-  }
-
   /// Apply restrictions to specific apps using provided [selection]
   /// [selection] contains applicationTokens, categoryTokens, or webDomainTokens
   /// Returns true if successful, false otherwise
@@ -118,6 +148,22 @@ class ScreenTimeApiIos {
     return ScreenTimeApiIosPlatform.instance.encourageAll();
   }
 
+  /// Remove restrictions for specific apps/categories
+  /// [selection] contains the apps/categories to remove restrictions from
+  ///
+  /// This allows you to selectively remove restrictions without affecting other
+  /// discouraged apps. Use this when you want to encourage specific apps while
+  /// keeping restrictions on others.
+  ///
+  /// Example:
+  /// ```dart
+  /// // Remove restrictions only for selected apps
+  /// await screenTimeApi.encourage(selectedApps);
+  /// ```
+  Future<void> encourage(FamilyActivitySelection selection) async {
+    return ScreenTimeApiIosPlatform.instance.encourage(selection);
+  }
+
   /// Enable or disable adult website blocking
   /// Requires prior authorization - call requestAuthorization() first
   /// [enabled] - true to block adult websites, false to allow them
@@ -134,32 +180,37 @@ class ScreenTimeApiIos {
   }
 
   /// Set comprehensive web content blocking including custom domains
-  /// [adultContentEnabled] - Enable built-in adult content filter
+  /// [adultContentBlocked] - Enable built-in adult content filter
   /// [blockedDomains] - List of specific domains to block (max 50)
+  ///
+  /// Returns the current configuration after applying the changes.
   ///
   /// Example usage:
   /// ```dart
-  /// await api.setWebContentBlocking(
-  ///   adultContentEnabled: true,
+  /// final config = await api.setWebContentBlocking(
+  ///   adultContentBlocked: true,
   ///   blockedDomains: ['facebook.com', 'twitter.com'],
   /// );
+  /// print('Adult content blocked: ${config.adultContentBlocked}');
   /// ```
-  Future<void> setWebContentBlocking({
-    required bool adultContentEnabled,
+  Future<WebContentBlockingConfiguration> setWebContentBlocking({
+    required bool adultContentBlocked,
     List<String> blockedDomains = const [],
   }) async {
     return ScreenTimeApiIosPlatform.instance.setWebContentBlocking(
-      adultContentEnabled: adultContentEnabled,
+      adultContentBlocked: adultContentBlocked,
       blockedDomains: blockedDomains,
     );
   }
 
   /// Get current web content blocking configuration
-  /// Returns a map containing:
-  /// - 'adultContentEnabled': bool
-  /// - 'blockedDomains': List<String>
-  Future<Map<String, dynamic>> getWebContentBlocking() async {
-    return ScreenTimeApiIosPlatform.instance.getWebContentBlocking();
+  /// Returns a WebContentBlockingConfiguration containing:
+  /// - adultContentBlocked: bool
+  /// - blockedDomains: List<String>
+  Future<WebContentBlockingConfiguration> getWebContentBlocking() async {
+    final result = await ScreenTimeApiIosPlatform.instance
+        .getWebContentBlocking();
+    return WebContentBlockingConfiguration.fromMap(result);
   }
 
   /// Apply quotas to specific apps instead of completely blocking them

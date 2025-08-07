@@ -63,29 +63,6 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
                 "appGroupIdentifier": ConfigurationManager.shared.appGroupIdentifier,
             ])
 
-        case "configureLogging":
-            guard let arguments = call.arguments as? [String: Any],
-                let logFilePath = arguments["logFilePath"] as? String
-            else {
-                logError("Configure logging failed: missing or invalid logFilePath")
-                result(
-                    FlutterError(
-                        code: "INVALID_ARGUMENTS", message: "Missing logFilePath argument",
-                        details: nil))
-                return
-            }
-
-            Logger.shared.configureLogFile(path: logFilePath)
-            logSuccess("Logging configured successfully at: \(logFilePath)")
-            result(true)
-        case "clearLogs":
-            let success = Logger.shared.clearLogs()
-            if success {
-                logInfo("Log file cleared successfully")
-            } else {
-                logWarning("Failed to clear log file")
-            }
-            result(success)
         case "requestAuthorization":
             Task {
                 do {
@@ -123,8 +100,30 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
                     return
                 }
 
-                // Extract UI configuration from arguments
-                let uiConfigArgs = call.arguments as? [String: Any]
+                // Extract UI configuration and pre-selected apps from arguments
+                let arguments = call.arguments as? [String: Any]
+                let uiConfigArgs = arguments
+
+                // Handle pre-selected apps if provided, otherwise start with empty selection
+                if let preSelectedAppsData = arguments?["preSelectedApps"] as? [String: Any] {
+                    do {
+                        // Decode the pre-selected apps and set as temp selection
+                        let preSelection = try decodeSelectionFromMap(preSelectedAppsData)
+                        FamilyControlModel.shared.setTempSelection(with: preSelection)
+                        logInfo(
+                            "🎯 Pre-selected apps set: \(preSelection.applicationTokens.count) apps, \(preSelection.categoryTokens.count) categories"
+                        )
+                    } catch {
+                        logError(
+                            "Failed to decode pre-selected apps: \(error.localizedDescription)")
+                        // Start with empty selection if decoding fails
+                        FamilyControlModel.shared.clearTempSelection()
+                    }
+                } else {
+                    // No pre-selection provided, start with empty selection
+                    FamilyControlModel.shared.clearTempSelection()
+                }
+
                 logInfo("📱 Showing family activity picker")
 
                 await MainActor.run {
@@ -132,32 +131,6 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
                     showController(with: uiConfigArgs)
                 }
             }
-        case "selectAppsToDiscourage":
-            Task {
-                // Check authorization first
-                let authStatus = getAuthorizationStatus()
-                if authStatus != "authorized" {
-                    result(
-                        FlutterError(
-                            code: "NOT_AUTHORIZED",
-                            message:
-                                "Screen Time API not authorized. Call requestAuthorization first.",
-                            details: "Current status: \(authStatus)"
-                        ))
-                    return
-                }
-
-                // Extract UI configuration from arguments (backward compatibility)
-                let uiConfigArgs = call.arguments as? [String: Any]
-
-                await MainActor.run {
-                    pendingResult = result
-                    showController(with: uiConfigArgs)
-                }
-            }
-        case "getSelectedApps":
-            let selectedApps = getSelectedTokens()
-            result(selectedApps)
         case "discourageApps":
             Task {
                 // Check authorization first
@@ -212,14 +185,47 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
 
             // Clear all selections and encourage all apps
             FamilyControlModel.shared.encourageAll()
-            FamilyControlModel.shared.clearAllSelections()
-
-            // Notify all platform views that the selection changed
-            NotificationCenter.default.post(
-                name: NSNotification.Name("FamilySelectionChanged"), object: nil)
-
             logSuccess("All apps encouraged and restrictions removed")
             result(nil)
+        case "encourage":
+            // Check authorization first
+            let authStatus = getAuthorizationStatus()
+            if authStatus != "authorized" {
+                logWarning("Encourage specific apps requested but not authorized: \(authStatus)")
+                result(
+                    FlutterError(
+                        code: "NOT_AUTHORIZED",
+                        message: "Screen Time API not authorized. Call requestAuthorization first.",
+                        details: "Current status: \(authStatus)"
+                    ))
+                return
+            }
+
+            guard let arguments = call.arguments as? [String: Any] else {
+                result(
+                    FlutterError(
+                        code: "INVALID_ARGUMENTS",
+                        message: "Invalid arguments provided to encourage",
+                        details: nil
+                    ))
+                return
+            }
+
+            Task {
+                do {
+                    try await encourageSelection(with: arguments)
+                    logSuccess("Successfully encouraged selected apps")
+                    result(nil)
+                } catch {
+                    logError("Failed to encourage apps: \(error.localizedDescription)")
+                    result(
+                        FlutterError(
+                            code: "ENCOURAGE_FAILED",
+                            message: "Failed to encourage selection in Screen Time API",
+                            details: error.localizedDescription
+                        ))
+                }
+            }
         case "getDiscouragedApps":
             // Check authorization first
             let authStatus = getAuthorizationStatus()
@@ -349,7 +355,7 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
             }
 
             guard let arguments = call.arguments as? [String: Any],
-                let adultContentEnabled = arguments["adultContentEnabled"] as? Bool,
+                let adultContentBlocked = arguments["adultContentBlocked"] as? Bool,
                 let blockedDomains = arguments["blockedDomains"] as? [String]
             else {
                 result(
@@ -357,7 +363,7 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
                         code: "INVALID_ARGUMENTS",
                         message: "Invalid arguments provided to setWebContentBlocking",
                         details:
-                            "Expected: adultContentEnabled (Bool), blockedDomains (List<String>)"
+                            "Expected: adultContentBlocked (Bool), blockedDomains (List<String>)"
                     ))
                 return
             }
@@ -376,10 +382,10 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
             Task {
                 do {
                     logInfo(
-                        "Setting web content blocking - adult content: \(adultContentEnabled), blocked domains: \(blockedDomains.count)"
+                        "Setting web content blocking - adult content: \(adultContentBlocked), blocked domains: \(blockedDomains.count)"
                     )
                     try await FamilyControlModel.shared.setWebContentBlocking(
-                        adultContentEnabled: adultContentEnabled,
+                        adultContentBlocked: adultContentBlocked,
                         blockedDomains: blockedDomains
                     )
                     logSuccess("Web content blocking set successfully")
@@ -412,7 +418,7 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
                     let webContentConfig = try await FamilyControlModel.shared
                         .getWebContentBlocking()
                     logInfo(
-                        "Get web content blocking completed - adult content: \(webContentConfig["adultContentEnabled"] as? Bool ?? false), blocked domains: \((webContentConfig["blockedDomains"] as? [String])?.count ?? 0))"
+                        "Get web content blocking completed - adult content: \(webContentConfig["adultContentBlocked"] as? Bool ?? false), blocked domains: \((webContentConfig["blockedDomains"] as? [String])?.count ?? 0))"
                     )
                     result(webContentConfig)
                 } catch {
@@ -433,17 +439,14 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
     @objc func onSelectionSaved() {
         logInfo("Selection saved - processing new family activity selection")
 
-        // Get the newly saved selection
-        let selectedTokens = getSelectedTokens()
+        // Get the temp selection (what user just selected)
+        let tempSelection = FamilyControlModel.shared.tempSelection
+        let selectedTokens = encodeSelection(tempSelection)
         logInfo(
             "Saved tokens - apps: \(selectedTokens["applicationTokens"] as? [String] ?? []), categories: \(selectedTokens["categoryTokens"] as? [String] ?? [])"
         )
 
         dismiss()
-
-        // Notify all platform views that the selection changed
-        NotificationCenter.default.post(
-            name: NSNotification.Name("FamilySelectionChanged"), object: nil)
 
         // Return the saved tokens to Flutter
         if let result = pendingResult {
@@ -456,85 +459,112 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
     @objc func onPressClose() {
         logInfo("Close button pressed - canceling family activity selection")
 
-        // Cancel button was pressed - don't save the temp selection
-        FamilyControlModel.shared.resetTempSelection()
-
-        // Get the current saved selection (not temp)
-        let selectedTokens = getSelectedTokens()
-        logInfo(
-            "Returning saved tokens - apps: \(selectedTokens["applicationTokens"] as? [String] ?? []), categories: \(selectedTokens["categoryTokens"] as? [String] ?? [])"
-        )
-
         dismiss()
 
-        // Return the saved tokens to Flutter
+        // Return null to Flutter (using NSNull)
         if let result = pendingResult {
-            logInfo("Returning selection result to Flutter")
-            result(selectedTokens)
+            logInfo("Returning null result to Flutter - selection was cancelled")
+            result(NSNull())
             pendingResult = nil
         }
     }
 
-    private func discourageSelection(with arguments: [String: Any]? = nil) async throws {
+    private func discourageSelection(with arguments: [String: Any]) async throws {
         let model = FamilyControlModel.shared
 
-        if let arguments = arguments {
-            // If arguments provided, decode tokens from Flutter
-            let tokenManager = TokenManager()
+        // Decode tokens from Flutter
+        let tokenManager = TokenManager()
 
-            var applications: Set<ApplicationToken> = []
-            var categories: Set<ActivityCategoryToken> = []
-            var webDomains: Set<WebDomainToken> = []
+        var applications: Set<ApplicationToken> = []
+        var categories: Set<ActivityCategoryToken> = []
+        var webDomains: Set<WebDomainToken> = []
 
-            if let appTokens = arguments["applicationTokens"] as? [String] {
-                for tokenString in appTokens {
-                    do {
-                        let token = try tokenManager.decodeApplicationToken(tokenString)
-                        applications.insert(token)
-                    } catch {
-                        logWarning("Failed to decode application token: \(tokenString)")
-                    }
+        if let appTokens = arguments["applicationTokens"] as? [String] {
+            for tokenString in appTokens {
+                do {
+                    let token = try tokenManager.decodeApplicationToken(tokenString)
+                    applications.insert(token)
+                } catch {
+                    logWarning("Failed to decode application token: \(tokenString)")
                 }
             }
-
-            if let catTokens = arguments["categoryTokens"] as? [String] {
-                for tokenString in catTokens {
-                    do {
-                        let token = try tokenManager.decodeCategoryToken(tokenString)
-                        categories.insert(token)
-                    } catch {
-                        logWarning("Failed to decode category token: \(tokenString)")
-                    }
-                }
-            }
-
-            if let webTokens = arguments["webDomainTokens"] as? [String] {
-                for tokenString in webTokens {
-                    do {
-                        let token = try tokenManager.decodeWebDomainToken(tokenString)
-                        webDomains.insert(token)
-                    } catch {
-                        logWarning("Failed to decode web domain token: \(tokenString)")
-                    }
-                }
-            }
-
-            model.discourage(
-                applications: applications, categories: categories, webDomains: webDomains)
-        } else {
-            // Use current saved selection
-            let selection = model.selectionToDiscourage
-            model.discourage(
-                applications: selection.applicationTokens,
-                categories: selection.categoryTokens,
-                webDomains: selection.webDomainTokens
-            )
         }
+
+        if let catTokens = arguments["categoryTokens"] as? [String] {
+            for tokenString in catTokens {
+                do {
+                    let token = try tokenManager.decodeCategoryToken(tokenString)
+                    categories.insert(token)
+                } catch {
+                    logWarning("Failed to decode category token: \(tokenString)")
+                }
+            }
+        }
+
+        if let webTokens = arguments["webDomainTokens"] as? [String] {
+            for tokenString in webTokens {
+                do {
+                    let token = try tokenManager.decodeWebDomainToken(tokenString)
+                    webDomains.insert(token)
+                } catch {
+                    logWarning("Failed to decode web domain token: \(tokenString)")
+                }
+            }
+        }
+
+        model.discourage(
+            applications: applications, categories: categories, webDomains: webDomains)
     }
 
-    private func getSelectedTokens() -> [String: Any] {
-        let selection = FamilyControlModel.shared.selectionToDiscourage
-        return encodeSelection(selection)
+    private func encourageSelection(with arguments: [String: Any]) async throws {
+        let model = FamilyControlModel.shared
+
+        // Decode tokens from Flutter
+        let tokenManager = TokenManager()
+
+        var applications: Set<ApplicationToken> = []
+        var categories: Set<ActivityCategoryToken> = []
+        var webDomains: Set<WebDomainToken> = []
+
+        if let appTokens = arguments["applicationTokens"] as? [String] {
+            for tokenString in appTokens {
+                do {
+                    let token = try tokenManager.decodeApplicationToken(tokenString)
+                    applications.insert(token)
+                } catch {
+                    logWarning("Failed to decode application token: \(tokenString)")
+                }
+            }
+        }
+
+        if let catTokens = arguments["categoryTokens"] as? [String] {
+            for tokenString in catTokens {
+                do {
+                    let token = try tokenManager.decodeCategoryToken(tokenString)
+                    categories.insert(token)
+                } catch {
+                    logWarning("Failed to decode category token: \(tokenString)")
+                }
+            }
+        }
+
+        if let webTokens = arguments["webDomainTokens"] as? [String] {
+            for tokenString in webTokens {
+                do {
+                    let token = try tokenManager.decodeWebDomainToken(tokenString)
+                    webDomains.insert(token)
+                } catch {
+                    logWarning("Failed to decode web domain token: \(tokenString)")
+                }
+            }
+        }
+
+        logInfo(
+            "🔓 Encouraging specific apps - apps: \(applications.count), categories: \(categories.count), webDomains: \(webDomains.count)"
+        )
+
+        model.encourage(
+            applications: applications, categories: categories, webDomains: webDomains)
     }
 
     private func encodeSelection(_ selection: FamilyActivitySelection) -> [String: Any] {
@@ -572,10 +602,6 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
             "categoryTokens": categoryTokens,
             "webDomainTokens": webDomainTokens,
         ]
-
-        if #available(iOS 15.2, *) {
-            result["includeEntireCategory"] = selection.includeEntireCategory
-        }
 
         return result
     }
@@ -635,5 +661,59 @@ public class ScreenTimeApiIosPlugin: NSObject, FlutterPlugin {
                 }).first?.rootViewController as? FlutterViewController
             controller?.dismiss(animated: true, completion: nil)
         }
+    }
+
+    private func decodeSelectionFromMap(_ selectionMap: [String: Any]) throws
+        -> FamilyActivitySelection
+    {
+        let tokenManager = TokenManager()
+
+        var applications: Set<ApplicationToken> = []
+        var categories: Set<ActivityCategoryToken> = []
+        var webDomains: Set<WebDomainToken> = []
+
+        // Decode application tokens
+        if let appTokens = selectionMap["applicationTokens"] as? [String] {
+            for tokenString in appTokens {
+                do {
+                    let token = try tokenManager.decodeApplicationToken(tokenString)
+                    applications.insert(token)
+                } catch {
+                    logWarning("Failed to decode application token: \(tokenString)")
+                }
+            }
+        }
+
+        // Decode category tokens
+        if let catTokens = selectionMap["categoryTokens"] as? [String] {
+            for tokenString in catTokens {
+                do {
+                    let token = try tokenManager.decodeCategoryToken(tokenString)
+                    categories.insert(token)
+                } catch {
+                    logWarning("Failed to decode category token: \(tokenString)")
+                }
+            }
+        }
+
+        // Decode web domain tokens
+        if let webTokens = selectionMap["webDomainTokens"] as? [String] {
+            for tokenString in webTokens {
+                do {
+                    let token = try tokenManager.decodeWebDomainToken(tokenString)
+                    webDomains.insert(token)
+                } catch {
+                    logWarning("Failed to decode web domain token: \(tokenString)")
+                }
+            }
+        }
+
+        // Create the selection with decoded tokens
+        var selection = FamilyActivitySelection()
+        selection.applicationTokens = applications
+        selection.categoryTokens = categories
+        selection.webDomainTokens = webDomains
+
+        return selection
     }
 }

@@ -15,10 +15,7 @@ class FamilyControlModel: ObservableObject {
 
     private let center = DeviceActivityCenter()
     private let store = ManagedSettingsStore()
-    private let userDefaultsKey = "ScreenTimeSelection"
     private let quotaUserDefaultsKey = "ScreenTimeQuotas"
-    private let encoder = PropertyListEncoder()
-    private let decoder = PropertyListDecoder()
 
     /// Get the current app group identifier from ConfigurationManager or use default
     private var appGroupIdentifier: String {
@@ -32,12 +29,10 @@ class FamilyControlModel: ObservableObject {
     }
 
     private init() {
-        selectionToDiscourage = savedSelection() ?? FamilyActivitySelection()
-        tempSelection = selectionToDiscourage
+        tempSelection = FamilyActivitySelection()
     }
 
-    @Published var selectionToDiscourage = FamilyActivitySelection()
-    @Published var tempSelection = FamilyActivitySelection()  // For picker interaction without saving
+    @Published var tempSelection = FamilyActivitySelection()
 
     func authorize() async throws {
         if #available(iOS 16.0, *) {
@@ -146,22 +141,40 @@ class FamilyControlModel: ObservableObject {
         }
     }
 
-    func saveSelection(selection: FamilyActivitySelection) {
-        let defaults = UserDefaults.standard
-        defaults.set(
-            try? encoder.encode(selection),
-            forKey: userDefaultsKey
+    func encourage(
+        applications: Set<ApplicationToken>, categories: Set<ActivityCategoryToken>,
+        webDomains: Set<WebDomainToken>
+    ) {
+        // Get current discouraged tokens
+        let currentApps = store.shield.applications ?? Set<ApplicationToken>()
+        let currentWebDomains = store.shield.webDomains ?? Set<WebDomainToken>()
+
+        var currentCategories = Set<ActivityCategoryToken>()
+        if case let .specific(categorySet, except: _) = store.shield.applicationCategories {
+            currentCategories = categorySet
+        }
+
+        // Remove the specified tokens from current shield
+        let newApps = currentApps.subtracting(applications)
+        let newCategories = currentCategories.subtracting(categories)
+        let newWebDomains = currentWebDomains.subtracting(webDomains)
+
+        // Update the shield with remaining tokens
+        store.shield.applications = newApps.isEmpty ? nil : newApps
+        store.shield.applicationCategories = ShieldSettings
+            .ActivityCategoryPolicy
+            .specific(newCategories)
+        store.shield.webDomains = newWebDomains.isEmpty ? nil : newWebDomains
+        store.shield.webDomainCategories = ShieldSettings
+            .ActivityCategoryPolicy
+            .specific(newCategories)
+
+        logInfo(
+            "🔓 Encouraged \(applications.count) apps, \(categories.count) categories, \(webDomains.count) web domains"
         )
-    }
-
-    func saveCurrentSelection() {
-        selectionToDiscourage = tempSelection
-        saveSelection(selection: selectionToDiscourage)
-    }
-
-    func resetTempSelection() {
-        tempSelection = selectionToDiscourage
-        logInfo("🔄 Selection reset to saved state")
+        logInfo(
+            "📊 Remaining shield: \(newApps.count) apps, \(newCategories.count) categories, \(newWebDomains.count) web domains"
+        )
     }
 
     func clearTempSelection() {
@@ -169,42 +182,24 @@ class FamilyControlModel: ObservableObject {
         logInfo("🗑️ Temporary selection cleared")
     }
 
-    func clearAllSelections() {
-        tempSelection = FamilyActivitySelection()
-        selectionToDiscourage = FamilyActivitySelection()
-        saveSelection(selection: selectionToDiscourage)
-        logInfo("🧹 All selections cleared and saved")
-    }
-
-    func savedSelection() -> FamilyActivitySelection? {
-        let defaults = UserDefaults.standard
-
-        guard let data = defaults.data(forKey: userDefaultsKey) else {
-            return nil
-        }
-
-        return try? decoder.decode(
-            FamilyActivitySelection.self,
-            from: data
+    func setTempSelection(with preSelection: FamilyActivitySelection) {
+        tempSelection = preSelection
+        logInfo(
+            "🎯 Temporary selection set with \(preSelection.applicationTokens.count) apps, \(preSelection.categoryTokens.count) categories, \(preSelection.webDomainTokens.count) web domains"
         )
     }
 
     // MARK: - Web Content Blocking
 
     func setWebContentBlocking(
-        adultContentEnabled: Bool,
+        adultContentBlocked: Bool,
         blockedDomains: [String] = []
     ) async throws {
         logInfo(
-            "🔧 Setting web content blocking - adult: \(adultContentEnabled), blocked: \(blockedDomains.count)"
+            "🔧 Setting web content blocking - adult: \(adultContentBlocked), blocked: \(blockedDomains.count)"
         )
 
-        // Store configuration in UserDefaults for persistence
-        let appGroup = UserDefaults(suiteName: appGroupIdentifier)
-        appGroup?.set(blockedDomains, forKey: "blockedDomains")
-        appGroup?.set(adultContentEnabled, forKey: "adultContentEnabled")
-
-        if adultContentEnabled {
+        if adultContentBlocked {
             if !blockedDomains.isEmpty {
                 // Use auto() with additional blocked domains
                 let webDomains = Set(blockedDomains.map { WebDomain(domain: $0) })
@@ -237,48 +232,80 @@ class FamilyControlModel: ObservableObject {
 
     // Convenience method for simple adult website blocking toggle
     func setAdultWebsiteBlocking(enabled: Bool) {
-        // Get existing blocked domains from UserDefaults
-        let appGroup = UserDefaults(suiteName: appGroupIdentifier)
-        let blockedDomains = appGroup?.array(forKey: "blockedDomains") as? [String] ?? []
+        // Get existing blocked domains from current filter policy
+        var existingDomains: [String] = []
+        let currentFilter = store.webContent.blockedByFilter
+
+        // Extract domains from current filter policy
+        switch currentFilter {
+        case .auto(let webDomains, except: _):
+            existingDomains = webDomains.map { $0.domain ?? "" }.filter { !$0.isEmpty }
+        case .specific(let webDomains):
+            existingDomains = webDomains.map { $0.domain ?? "" }.filter { !$0.isEmpty }
+        case .none:
+            existingDomains = []
+        @unknown default:
+            existingDomains = []
+        }
 
         // Use the unified method
         Task {
             try? await setWebContentBlocking(
-                adultContentEnabled: enabled,
-                blockedDomains: blockedDomains
+                adultContentBlocked: enabled,
+                blockedDomains: existingDomains
             )
         }
     }
 
     func getAdultWebsiteBlocking() -> Bool {
-        // Check if adult content is enabled from UserDefaults
-        let appGroup = UserDefaults(suiteName: appGroupIdentifier)
-        let adultContentEnabled = appGroup?.bool(forKey: "adultContentEnabled") ?? false
+        // Check if adult content is enabled by examining the filter policy
+        let currentFilter = store.webContent.blockedByFilter
+        let adultContentBlocked: Bool
 
-        logInfo("📋 Adult website blocking status: \(adultContentEnabled)")
-        return adultContentEnabled
+        if case .auto = currentFilter {
+            adultContentBlocked = true  // Adult content filter is active
+        } else {
+            adultContentBlocked = false  // Only specific domains or no filtering
+        }
+
+        logInfo("📋 Adult website blocking status: \(adultContentBlocked)")
+        return adultContentBlocked
     }
 
     func getWebContentBlocking() async throws -> [String: Any] {
         logInfo("📋 Getting web content blocking configuration")
 
-        // Get stored configuration from UserDefaults
-        let appGroup = UserDefaults(suiteName: appGroupIdentifier)
-        let blockedDomains = appGroup?.array(forKey: "blockedDomains") as? [String] ?? []
-        let adultContentEnabled = appGroup?.bool(forKey: "adultContentEnabled") ?? false
-
-        // Check current filter policy
+        // Get current filter policy from the store
         let currentFilter = store.webContent.blockedByFilter
+
+        var adultContentBlocked = false
+        var blockedDomains: [String] = []
         let isFilterActive = currentFilter != WebContentSettings.FilterPolicy.none
 
+        // Extract configuration based on filter policy
+        switch currentFilter {
+        case .auto(let webDomains, except: _):
+            adultContentBlocked = true
+            blockedDomains = webDomains.map { $0.domain ?? "" }.filter { !$0.isEmpty }
+        case .specific(let webDomains):
+            adultContentBlocked = false
+            blockedDomains = webDomains.map { $0.domain ?? "" }.filter { !$0.isEmpty }
+        case .none:
+            adultContentBlocked = false
+            blockedDomains = []
+        @unknown default:
+            adultContentBlocked = false
+            blockedDomains = []
+        }
+
         let result: [String: Any] = [
-            "adultContentEnabled": adultContentEnabled,
+            "adultContentBlocked": adultContentBlocked,
             "blockedDomains": blockedDomains,
             "isActive": isFilterActive,
         ]
 
         logInfo(
-            "📋 Current web content blocking - adult: \(adultContentEnabled), blocked: \(blockedDomains.count), active: \(isFilterActive)"
+            "📋 Current web content blocking - adult: \(adultContentBlocked), blocked: \(blockedDomains.count), active: \(isFilterActive)"
         )
 
         return result

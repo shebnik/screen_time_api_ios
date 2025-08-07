@@ -16,7 +16,7 @@ class AppLabelView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 60, // Reduced height since we're showing only one label
+      height: 50,
       child: defaultTargetPlatform == TargetPlatform.iOS
           ? UiKitView(
               viewType: 'app_label_view',

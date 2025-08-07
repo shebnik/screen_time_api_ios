@@ -8,22 +8,16 @@ class MockScreenTimeApiIosPlatform
     with MockPlatformInterfaceMixin
     implements ScreenTimeApiIosPlatform {
   @override
-  Future<String?> getPlatformVersion() => Future.value('42');
-
-  @override
   Future<Map<String, dynamic>> requestAuthorization() => Future.value({});
 
   @override
   Future<Map<String, dynamic>> getAuthorizationStatus() => Future.value({});
 
   @override
-  Future<FamilyActivitySelection> showFamilyActivityPicker([
-    Map<String, dynamic>? uiConfig,
+  Future<FamilyActivitySelection?> showFamilyActivityPicker(
+    Map<String, dynamic>? uiConfig, [
+    FamilyActivitySelection? preSelectedApps,
   ]) => Future.value(FamilyActivitySelection.empty());
-
-  @override
-  Future<FamilyActivitySelection> getSelectedApps() =>
-      Future.value(FamilyActivitySelection.empty());
 
   @override
   Future<bool> discourageApps(FamilyActivitySelection selection) =>
@@ -44,15 +38,15 @@ class MockScreenTimeApiIosPlatform
   Future<void> encourageAll() => Future.value();
 
   @override
+  Future<void> encourage(FamilyActivitySelection selection) => Future.value();
+
+  @override
   Future<bool> setAppQuotas(QuotaConfiguration quotaConfig) =>
       Future.value(true);
 
   @override
   Future<QuotaConfiguration> getAppQuotas() =>
       Future.value(QuotaConfiguration.empty());
-
-  @override
-  Future<bool> clearLogs() => Future.value(true);
 
   @override
   Future<Map<String, dynamic>> configure({
@@ -64,40 +58,53 @@ class MockScreenTimeApiIosPlatform
   });
 
   @override
-  Future<bool> configureLogging({required String logFilePath}) =>
-      Future.value(true);
-
-  @override
-  Future<String> getLogContent() => Future.value('Log content');
-
-  @override
-  Future<Map<String, dynamic>> getWebContentBlocking() => Future.value({
-    'adultContentEnabled': false,
-    'blockedDomains': <String>[],
-  });
-
-  @override
-  Future<void> setWebContentBlocking({
-    required bool adultContentEnabled,
+  Future<WebContentBlockingConfiguration> setWebContentBlocking({
+    required bool adultContentBlocked,
     List<String> blockedDomains = const [],
   }) async {
-    // Simulate setting web content blocking
-    return Future.value();
+    // Simulate setting web content blocking and return the configuration
+    return WebContentBlockingConfiguration(
+      adultContentBlocked: adultContentBlocked,
+      blockedDomains: blockedDomains,
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getWebContentBlocking() {
+    // Simulate getting web content blocking configuration
+    return Future.value({
+      'adultContentBlocked': false,
+    });
   }
 }
 
 void main() {
   final initialPlatform = ScreenTimeApiIosPlatform.instance;
 
+  setUp(() {
+    ScreenTimeApiIosPlatform.instance = MockScreenTimeApiIosPlatform();
+  });
+
   test('$MethodChannelScreenTimeApiIos is the default instance', () {
     expect(initialPlatform, isInstanceOf<MethodChannelScreenTimeApiIos>());
   });
 
-  test('getPlatformVersion', () async {
-    final screenTimeApiIosPlugin = ScreenTimeApiIos();
-    final fakePlatform = MockScreenTimeApiIosPlatform();
-    ScreenTimeApiIosPlatform.instance = fakePlatform;
+  test('ScreenTimeApiIos throws when not configured', () {
+    expect(() => ScreenTimeApiIos(), throwsStateError);
+  });
 
-    expect(await screenTimeApiIosPlugin.getPlatformVersion(), '42');
+  test('ScreenTimeApiIos can be created after configuration', () async {
+    // Configure the plugin
+    final config = await ScreenTimeApiIos.configure(
+      appGroupIdentifier: 'group.test.example',
+      logFilePath: '/test/path',
+    );
+
+    expect(config, isNotNull);
+    expect(ScreenTimeApiIos.isConfigured, isTrue);
+    expect(ScreenTimeApiIos.globalConfiguration, isNotNull);
+
+    // Should be able to create instances now
+    expect(() => ScreenTimeApiIos(), returnsNormally);
   });
 }

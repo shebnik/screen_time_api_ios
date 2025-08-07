@@ -8,18 +8,18 @@ We've implemented a unified web content blocking system that handles both adult 
 ### Primary Method: `setWebContentBlocking`
 ```swift
 func setWebContentBlocking(
-    adultContentEnabled: Bool,
+    adultContentBlocked: Bool,
     blockedDomains: [String] = []
 ) async throws
 ```
 
 **Core Logic:**
 
-**When adultContentEnabled = true:**
+**When adultContentBlocked = true:**
 - If blocked domains provided: `WebContentSettings.FilterPolicy.auto(except: domains)`
 - If no blocked domains: `WebContentSettings.FilterPolicy.auto()`
 
-**When adultContentEnabled = false:**
+**When adultContentBlocked = false:**
 - If blocked domains provided: `WebContentSettings.FilterPolicy.specific(domains)`
 - If no blocked domains: `WebContentSettings.FilterPolicy.none`
 
@@ -54,15 +54,15 @@ func getWebContentBlocking() async throws -> [String: Any]
 
 ```swift
 // Adult content only
-await setWebContentBlocking(adultContentEnabled: true)
+await setWebContentBlocking(adultContentBlocked: true)
 // Result: FilterPolicy.auto()
 
 // Custom domains only  
-await setWebContentBlocking(adultContentEnabled: false, blockedDomains: ["example.com"])
+await setWebContentBlocking(adultContentBlocked: false, blockedDomains: ["example.com"])
 // Result: FilterPolicy.specific(["example.com"])
 
 // Both combined
-await setWebContentBlocking(adultContentEnabled: true, blockedDomains: ["example.com"]) 
+await setWebContentBlocking(adultContentBlocked: true, blockedDomains: ["example.com"]) 
 // Result: FilterPolicy.auto(except: ["example.com"])
 
 // Legacy compatibility

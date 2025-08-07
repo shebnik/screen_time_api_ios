@@ -25,7 +25,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  screen_time_api_ios: ^1.0.0
+  screen_time_api_ios: ^0.1.0
 ```
 
 ### iOS Setup
@@ -62,94 +62,32 @@ class ScreenTimeManager {
   // Request authorization
   Future<bool> requestAuthorization() async {
     final response = await _plugin.requestAuthorization();
-    return response.isSuccess;
+    return response.status.isSuccess;
   }
 
-  // Select apps to restrict
-  Future<List<String>> selectAppsToRestrict() async {
+  // Show Family Activity Picker
+  Future<FamilyActivitySelection?> showFamilyActivityPicker() async {
     try {
-      return await _plugin.selectAppsToDiscourage();
+      return await _plugin.showFamilyActivityPicker();
     } catch (e) {
-      print('Error selecting apps: $e');
-      return [];
+      print('Error showing family activity picker: $e');
+      return null;
     }
   }
 
+  // Restrict Apps by FamilyActivitySelection
+  Future<bool> restrictApps(FamilyActivitySelection selection) async {
+    return await _plugin.discourage(selection);
+  }
+
   // Get currently restricted apps
-  Future<List<String>> getRestrictedApps() async {
+  Future<FamilyActivitySelection> getRestrictedApps() async {
     return await _plugin.getDiscouragedApps();
   }
 
   // Remove all restrictions
   Future<void> removeAllRestrictions() async {
     await _plugin.encourageAll();
-  }
-}
-```
-
-### Complete Authorization Flow
-
-```dart
-class MyApp extends StatefulWidget {
-  @override
-  _MyAppState createState() => _MyAppState();
-}
-
-class _MyAppState extends State<MyApp> {
-  final _screenTime = ScreenTimeApiIos();
-  AuthorizationStatus _status = AuthorizationStatus.unknown;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkStatus();
-  }
-
-  Future<void> _checkStatus() async {
-    final response = await _screenTime.getAuthorizationStatus();
-    setState(() {
-      _status = response.status;
-    });
-  }
-
-  Future<void> _requestAuthorization() async {
-    if (_status.canRequestAuthorization) {
-      final response = await _screenTime.requestAuthorization();
-      setState(() {
-        _status = response.status;
-      });
-      
-      if (response.isSuccess) {
-        // Now you can select apps to restrict
-        final apps = await _screenTime.selectAppsToDiscourage();
-        print('Selected ${apps.length} apps to restrict');
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text('Screen Time Example')),
-      body: Center(
-        child: Column(
-          children: [
-            Text('Status: ${_status.value}'),
-            ElevatedButton(
-              onPressed: _status.canRequestAuthorization ? _requestAuthorization : null,
-              child: Text('Request Authorization'),
-            ),
-            ElevatedButton(
-              onPressed: _status.isAuthorized ? () async {
-                final apps = await _screenTime.selectAppsToDiscourage();
-                print('Selected apps: $apps');
-              } : null,
-              child: Text('Select Apps to Restrict'),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 ```

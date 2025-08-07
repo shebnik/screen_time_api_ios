@@ -71,10 +71,14 @@ class _QuotaManagementExampleState extends State<QuotaManagementExample> {
 
     try {
       final selection = await _plugin.showFamilyActivityPicker();
-      setState(() {
-        _selectedApps = selection;
-      });
-      _showSnackBar('Apps selected successfully!', Colors.green);
+      if (selection != null) {
+        setState(() {
+          _selectedApps = selection;
+        });
+        _showSnackBar('Apps selected successfully!', Colors.green);
+      } else {
+        _showSnackBar('App selection was cancelled', Colors.orange);
+      }
     } catch (e) {
       _showSnackBar('Failed to select apps: $e', Colors.red);
     } finally {
