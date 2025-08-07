@@ -15,34 +15,36 @@ class AppLabelView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: 50,
-      child: defaultTargetPlatform == TargetPlatform.iOS
-          ? UiKitView(
-              viewType: 'app_label_view',
-              creationParams: <String, dynamic>{
-                'tokenType': tokenType.value,
-                'encodedToken': encodedToken,
-              },
-              creationParamsCodec: const StandardMessageCodec(),
-            )
-          : Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: _getBackgroundColor(),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '${_getDisplayName()} ${encodedToken.substring(0, 8)}...',
-                  style: const TextStyle(fontSize: 14),
-                  textAlign: TextAlign.center,
+    return IgnorePointer(
+      child: SizedBox(
+        height: 50,
+        child: defaultTargetPlatform == TargetPlatform.iOS
+            ? UiKitView(
+                viewType: 'app_label_view',
+                creationParams: <String, dynamic>{
+                  'tokenType': tokenType.value,
+                  'encodedToken': encodedToken,
+                },
+                creationParamsCodec: const StandardMessageCodec(),
+              )
+            : Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getBackgroundColor(),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${_getDisplayName()} ${encodedToken.substring(0, 8)}...',
+                    style: const TextStyle(fontSize: 14),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               ),
-            ),
+      ),
     );
   }
 
